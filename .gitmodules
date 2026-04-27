@@ -1,0 +1,3 @@
+[submodule "Plugins/GekkoNetUE"]
+	path = Plugins/GekkoNetUE
+	url = https://github.com/koenjicode/GekkoNetUE.git
