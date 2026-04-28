@@ -75,10 +75,9 @@ namespace GekkoGame {
         void Init(int num_players);
 #ifdef GEKKONET_USE_SDL
         void Draw(SDL_Renderer* renderer);
+        Input PollInput();
 #endif
         void Update(Input inputs[MAX_PLAYERS]);
-
-        Input PollInput();
 
     private:
         void ApplyInput(Input inputs[MAX_PLAYERS]);

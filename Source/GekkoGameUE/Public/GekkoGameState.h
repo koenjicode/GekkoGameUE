@@ -19,6 +19,11 @@ public:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void Tick(float DeltaSeconds) override;
+	
+	void Update();
+	
+	
+	GekkoGame::Input PollInput(int32 ControllerIndex) const;
 
 private:
 	float ElapsedTime;
