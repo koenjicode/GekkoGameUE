@@ -12,9 +12,24 @@ void AGekkoGameState::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	// TODO: very rough and temporary, needs some sort of way to set the player id.
+	int32 player_id = 0;
+	int hosts[2] = {};
+
+	if (player_id == 0)
+	{
+		hosts[0] = 7000;
+		hosts[1] = 7001;
+	}
+	else
+	{
+		hosts[0] = 7001;
+		hosts[1] = 7002;
+	}
+	
 	FGekkoSessionConfig config;
 	config.AddPlayer();
-	config.AddPlayer("127.0.0.1:", 7001);
+	config.AddPlayer("127.0.0.1:", hosts[1]);
 	
 	config.SessionSize.InputSize = sizeof(GekkoGame::Input);
 	config.SessionSize.StateSize = sizeof(GekkoGame::Gamestate::state);
@@ -22,11 +37,11 @@ void AGekkoGameState::BeginPlay()
 	UGekkoNetSubsystem* Subsystem = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
 	if (Subsystem)
 	{
-		Subsystem->Create(config, false);
+		Subsystem->SetSessionConfig(config);
+		Subsystem->CreateSession(hosts[0]);
 	}
 	
-	int32 num_players = config.LocalPlayers.Num() + config.RemotePlayers.Num();
-	gs.Init(num_players);
+	gs.Init(config.GetNumberOfPlayers());
 }
 
 void AGekkoGameState::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -49,9 +64,11 @@ void AGekkoGameState::Tick(float DeltaSeconds)
 
 void AGekkoGameState::Update()
 {
+	UGekkoNetSubsystem* Subsystem = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
+	
 	auto local_input = PollInput(0);
-	for (int i = 0; i < num_local_players; i++) {
-		gekko_add_local_input(session, local_players[i], &local_input);
+	for (int i = 0; i < Subsystem->Config.LocalPlayers.Num(); i++) {
+		gekko_add_local_input(Subsystem->Session, Subsystem->Config.LocalPlayers[i].PlayerIndex, &local_input);
 	}
 }
 
