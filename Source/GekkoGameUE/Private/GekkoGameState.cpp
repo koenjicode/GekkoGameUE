@@ -171,12 +171,14 @@ void AGekkoGameState::Update()
 GekkoGame::Input AGekkoGameState::PollInput(int32 ControllerIndex) const
 {
 	APlayerController* PC = UGameplayStatics::GetPlayerController(this, ControllerIndex);
-	
-	GekkoGame::Input inp;
-	inp.up = PC->IsInputKeyDown(EKeys::Up);
-	inp.down = PC->IsInputKeyDown(EKeys::Down);
-	inp.left = PC->IsInputKeyDown(EKeys::Left);
-	inp.right = PC->IsInputKeyDown(EKeys::Right);
+	GekkoGame::Input inp = {};
+	if (PC)
+	{
+		inp.up = PC->IsInputKeyDown(EKeys::Up);
+		inp.down = PC->IsInputKeyDown(EKeys::Down);
+		inp.left = PC->IsInputKeyDown(EKeys::Left);
+		inp.right = PC->IsInputKeyDown(EKeys::Right);
+	}
 	return inp;
 }
 
