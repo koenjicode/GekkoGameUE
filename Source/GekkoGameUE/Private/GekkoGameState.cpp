@@ -48,11 +48,9 @@ void AGekkoGameState::InitGame()
 		return;
 	}
 	
-	// TODO: very rough and temporary, needs some sort of way to set the player id.
-	int32 player_id = 0;
+	UGekkoNetSubsystem* SS = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
 	int hosts[2] = {};
-
-	if (player_id == 0)
+	if (SS->PlayerId == 0)
 	{
 		hosts[0] = 7000;
 		hosts[1] = 7001;
@@ -70,11 +68,8 @@ void AGekkoGameState::InitGame()
 	config.SessionSize.InputSize = sizeof(GekkoGame::Input);
 	config.SessionSize.StateSize = sizeof(GekkoGame::Gamestate::state);
 
-	if (UGekkoNetSubsystem* Subsystem = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>())
-	{
-		Subsystem->SetSessionConfig(config);
-		Subsystem->CreateSession(hosts[0]);
-	}
+	SS->SetSessionConfig(config);
+	SS->CreateSession(hosts[0]);
 	
 	gs.Init(config.GetNumberOfPlayers());
 }
