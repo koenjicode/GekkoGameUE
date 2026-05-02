@@ -36,6 +36,8 @@ void AGekkoGameState::Tick(float DeltaSeconds)
 	while (ElapsedTime >= ONE_FRAME)
 	{
 		Update();
+		OnUnrealDraw();
+		++LocalFrame;
 		ElapsedTime -= ONE_FRAME;
 	}
 }
@@ -44,6 +46,14 @@ void AGekkoGameState::InitGame()
 {
 	if (bLocalPlayEnabled)
 	{
+		int32 num_players = 2;
+		for (int i = 0; i < num_players; ++i)
+		{
+			if (i > 0)
+			{
+				UGameplayStatics::CreatePlayer(GetWorld(), true);
+			}
+		}
 		gs.Init(2);
 		return;
 	}
@@ -83,7 +93,6 @@ void AGekkoGameState::Update()
 		Inputs[1] = PollInput(1);
 		
 		gs.Update(Inputs);
-		OnUnrealDraw();
 		return;
 	}
 	
@@ -196,7 +205,7 @@ FVector AGekkoGameState::GetPaddlePosition(int32 index) const
 FVector AGekkoGameState::GetBallPosition(int32 index) const
 {
 	FVector pos;
-	int32 ball_index = index + 2;
+	int32 ball_index = index + GekkoGame::MAX_PLAYERS;
 	
 	int game_scale = GekkoGame::GAME_SCALE;
 	
