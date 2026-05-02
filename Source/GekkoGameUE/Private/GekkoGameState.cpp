@@ -19,7 +19,29 @@ AGekkoGameState::AGekkoGameState()
 void AGekkoGameState::BeginPlay()
 {
 	Super::BeginPlay();
+	InitGame();
+}
+
+void AGekkoGameState::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	Super::EndPlay(EndPlayReason);
+	gs = {};
+}
+
+void AGekkoGameState::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
 	
+	ElapsedTime += DeltaSeconds;
+	while (ElapsedTime >= ONE_FRAME)
+	{
+		Update();
+		ElapsedTime -= ONE_FRAME;
+	}
+}
+
+void AGekkoGameState::InitGame()
+{
 	if (bLocalPlayEnabled)
 	{
 		gs.Init(2);
@@ -57,24 +79,6 @@ void AGekkoGameState::BeginPlay()
 	gs.Init(config.GetNumberOfPlayers());
 }
 
-void AGekkoGameState::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-	Super::EndPlay(EndPlayReason);
-	gs = {};
-}
-
-void AGekkoGameState::Tick(float DeltaSeconds)
-{
-	Super::Tick(DeltaSeconds);
-	
-	ElapsedTime += DeltaSeconds;
-	while (ElapsedTime >= ONE_FRAME)
-	{
-		Update();
-		ElapsedTime -= ONE_FRAME;
-	}
-}
-
 void AGekkoGameState::Update()
 {
 	if (bLocalPlayEnabled)
@@ -84,6 +88,7 @@ void AGekkoGameState::Update()
 		Inputs[1] = PollInput(1);
 		
 		gs.Update(Inputs);
+		OnUnrealDraw();
 		return;
 	}
 	
@@ -165,6 +170,7 @@ void AGekkoGameState::Update()
 			break;
 		}
 	}
+	OnUnrealDraw();
 }
 
 GekkoGame::Input AGekkoGameState::PollInput(int32 ControllerIndex) const
@@ -177,4 +183,28 @@ GekkoGame::Input AGekkoGameState::PollInput(int32 ControllerIndex) const
 	inp.left = PC->IsInputKeyDown(EKeys::Left);
 	inp.right = PC->IsInputKeyDown(EKeys::Right);
 	return inp;
+}
+
+FVector AGekkoGameState::GetPaddlePosition(int32 index) const
+{
+	FVector pos;
+	int game_scale = GekkoGame::GAME_SCALE;
+	
+	pos.X = gs.state.e_pos[index].x / game_scale; 
+	pos.Z = gs.state.e_pos[index].y / game_scale;
+	
+	return pos;
+}
+
+FVector AGekkoGameState::GetBallPosition(int32 index) const
+{
+	FVector pos;
+	int32 ball_index = index + 2;
+	
+	int game_scale = GekkoGame::GAME_SCALE;
+	
+	pos.X = gs.state.e_pos[ball_index].x / game_scale;
+	pos.Z = gs.state.e_pos[ball_index].y / game_scale; 
+	
+	return pos;
 }

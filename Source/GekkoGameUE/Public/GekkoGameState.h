@@ -22,9 +22,21 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void Tick(float DeltaSeconds) override;
 	
-	void Update();
+	void InitGame();
 	
+	void Update();
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnUnrealDraw();
+	
+	// input gathering
 	GekkoGame::Input PollInput(int32 ControllerIndex) const;
+	
+	// Get paddle position in gekko game state.
+	UFUNCTION(BlueprintPure)
+	FVector GetPaddlePosition(int32 index) const;
+	// Get ball position in gekko game state.
+	UFUNCTION(BlueprintPure)
+	FVector GetBallPosition(int32 index) const;
 	
 	// Forces a Local Play mode that can be controlled by 2 players.
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
