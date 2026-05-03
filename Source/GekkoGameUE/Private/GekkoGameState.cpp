@@ -33,6 +33,10 @@ void AGekkoGameState::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void AGekkoGameState::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	if (!bStateStarted)
+	{
+		return;
+	}
 	
 	ElapsedTime += DeltaSeconds;
 	
@@ -69,6 +73,7 @@ void AGekkoGameState::InitGame()
 				UGameplayStatics::CreatePlayer(GetWorld(), true);
 			}
 		}
+		bStateStarted = true;
 		gs.Init(2);
 		return;
 	}
@@ -98,11 +103,9 @@ void AGekkoGameState::InitGame()
 		config.SessionSize.InputSize = sizeof(GekkoGame::Input);
 		config.SessionSize.StateSize = sizeof(GekkoGame::Gamestate::state);
 	
-	
 		UGekkoNetSubsystem* SS = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
 		SS->SetSessionConfig(config);
-		SS->CreateSession(GI->LocalPort);
-	
+		bStateStarted = SS->CreateSession(GI->LocalPort);
 		gs.Init(config.GetNumberOfPlayers());
 	}
 	UE_LOG(LogTemp, Error, TEXT("Failed to start the GekkoNet match."));
@@ -205,13 +208,35 @@ GekkoGame::Input AGekkoGameState::PollInput(int32 ControllerIndex) const
 {
 	APlayerController* PC = UGameplayStatics::GetPlayerController(this, ControllerIndex);
 	GekkoGame::Input inp = {};
+
 	if (PC)
 	{
-		inp.up = PC->IsInputKeyDown(EKeys::Up);
-		inp.down = PC->IsInputKeyDown(EKeys::Down);
-		inp.left = PC->IsInputKeyDown(EKeys::Left);
-		inp.right = PC->IsInputKeyDown(EKeys::Right);
+		const float Deadzone = 0.5f;
+
+		const float LeftX = PC->GetInputAnalogKeyState(EKeys::Gamepad_LeftX);
+		const float LeftY = PC->GetInputAnalogKeyState(EKeys::Gamepad_LeftY);
+
+		inp.up =
+			PC->IsInputKeyDown(EKeys::Up) ||
+			PC->IsInputKeyDown(EKeys::Gamepad_DPad_Up) ||
+			LeftY > Deadzone;
+
+		inp.down =
+			PC->IsInputKeyDown(EKeys::Down) ||
+			PC->IsInputKeyDown(EKeys::Gamepad_DPad_Down) ||
+			LeftY < -Deadzone;
+
+		inp.left =
+			PC->IsInputKeyDown(EKeys::Left) ||
+			PC->IsInputKeyDown(EKeys::Gamepad_DPad_Left) ||
+			LeftX < -Deadzone;
+
+		inp.right =
+			PC->IsInputKeyDown(EKeys::Right) ||
+			PC->IsInputKeyDown(EKeys::Gamepad_DPad_Right) ||
+			LeftX > Deadzone;
 	}
+
 	return inp;
 }
 

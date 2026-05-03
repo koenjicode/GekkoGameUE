@@ -38,9 +38,8 @@ public:
 	UFUNCTION(BlueprintPure)
 	FVector GetBallPosition(int32 index) const;
 	
-	// Forces a Local Play mode that can be controlled by 2 players.
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
-	bool bLocalPlayEnabled;
+	UPROPERTY(BlueprintReadOnly)
+	bool bStateStarted;
 
 private:
 	float ElapsedTime;
