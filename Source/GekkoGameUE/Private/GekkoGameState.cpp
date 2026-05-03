@@ -2,6 +2,8 @@
 
 
 #include "GekkoGameState.h"
+
+#include "GekkoGameInstance.h"
 #include "GekkoNetSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -33,20 +35,33 @@ void AGekkoGameState::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	
 	ElapsedTime += DeltaSeconds;
-	while (ElapsedTime >= ONE_FRAME)
+	
+	UGekkoNetSubsystem* SS = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
+	const float FramesAhead = SS->GetFramesAhead();
+	constexpr float BaseFrame = ONE_FRAME;
+	
+	const float AheadScale = (FramesAhead > 0.5f) ? 1.016f : 1.0f;
+	const float EffectiveFrame = BaseFrame * AheadScale;
+
+	int32 Steps = 0;
+	constexpr int32 MaxStepsPerTick = 4;
+
+	while (ElapsedTime >= EffectiveFrame && Steps < MaxStepsPerTick)
 	{
 		Update();
-		OnUnrealDraw();
-		++LocalFrame;
-		ElapsedTime -= ONE_FRAME;
+		ElapsedTime -= BaseFrame;
+		++Steps;
 	}
+
+	OnUnrealDraw();
 }
 
 void AGekkoGameState::InitGame()
 {
-	if (bLocalPlayEnabled)
+	UGekkoGameInstance* GI = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
+	int32 num_players = 2;
+	if (GI->bLocalPlayEnabled)
 	{
-		int32 num_players = 2;
 		for (int i = 0; i < num_players; ++i)
 		{
 			if (i > 0)
@@ -58,30 +73,39 @@ void AGekkoGameState::InitGame()
 		return;
 	}
 	
-	UGekkoNetSubsystem* SS = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
-	int hosts[2] = {};
-	if (SS->PlayerId == 0)
-	{
-		hosts[0] = 7000;
-		hosts[1] = 7001;
-	}
-	else
-	{
-		hosts[0] = 7001;
-		hosts[1] = 7002;
-	}
-	
 	FGekkoSessionConfig config;
-	config.AddPlayer();
-	config.AddPlayer("127.0.0.1:", hosts[1]);
-	
-	config.SessionSize.InputSize = sizeof(GekkoGame::Input);
-	config.SessionSize.StateSize = sizeof(GekkoGame::Gamestate::state);
+	int player_count = 0;
+	for (int i = 0; i < num_players; ++i)
+	{
+		if (GI->PlayerId == i)
+		{
+			config.AddPlayer();
+			++player_count;
+		}
+		else
+		{
+			if (!GI->RemoteAddresses.IsEmpty())
+			{
+				auto player = GI->RemoteAddresses[0];
+				config.AddPlayer(player.Address, player.Port);
+				++player_count;
+			}
+		}
+	}
 
-	SS->SetSessionConfig(config);
-	SS->CreateSession(hosts[0]);
+	if (player_count == num_players)
+	{
+		config.SessionSize.InputSize = sizeof(GekkoGame::Input);
+		config.SessionSize.StateSize = sizeof(GekkoGame::Gamestate::state);
 	
-	gs.Init(config.GetNumberOfPlayers());
+	
+		UGekkoNetSubsystem* SS = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
+		SS->SetSessionConfig(config);
+		SS->CreateSession(GI->LocalPort);
+	
+		gs.Init(config.GetNumberOfPlayers());
+	}
+	UE_LOG(LogTemp, Error, TEXT("Failed to start the GekkoNet match."));
 }
 
 void AGekkoGameState::Update()

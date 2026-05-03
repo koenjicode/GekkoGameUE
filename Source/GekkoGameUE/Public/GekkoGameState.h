@@ -41,9 +41,6 @@ public:
 	// Forces a Local Play mode that can be controlled by 2 players.
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	bool bLocalPlayEnabled;
-	
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
-	int32 LocalFrame;
 
 private:
 	float ElapsedTime;
