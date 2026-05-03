@@ -14,8 +14,6 @@ AGekkoGameState::AGekkoGameState()
 {
 	PrimaryActorTick.bCanEverTick =	true;
 	bReplicates = false;
-	
-	bLocalPlayEnabled = false;
 }
 
 void AGekkoGameState::BeginPlay()
@@ -113,7 +111,8 @@ void AGekkoGameState::InitGame()
 
 void AGekkoGameState::Update()
 {
-	if (bLocalPlayEnabled)
+	UGekkoGameInstance* GI = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
+	if (GI->bLocalPlayEnabled)
 	{
 		GekkoGame::Input Inputs[GekkoGame::MAX_PLAYERS] = {};
 		Inputs[0] = PollInput(0);
