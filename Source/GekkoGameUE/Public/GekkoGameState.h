@@ -24,7 +24,7 @@ public:
 	
 	void InitGame();
 	
-	void Update();
+	void TickGameState();
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnUnrealDraw();
 	

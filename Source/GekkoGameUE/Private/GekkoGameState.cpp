@@ -2,13 +2,15 @@
 
 
 #include "GekkoGameState.h"
-
 #include "GekkoGameInstance.h"
 #include "GekkoNetSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 
-constexpr int TARGET_FPS = 60;
-constexpr float ONE_FRAME = 1.0f / TARGET_FPS;
+#define TARGET_FRAMERATE 60
+#define ONE_FRAME (1.0f / TARGET_FRAMERATE)
+
+#define MAX_UPDATES_PER_TICK 30
+
 
 AGekkoGameState::AGekkoGameState()
 {
@@ -31,28 +33,13 @@ void AGekkoGameState::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void AGekkoGameState::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-	if (!bStateStarted)
-	{
-		return;
-	}
-	
+
 	ElapsedTime += DeltaSeconds;
-	
-	UGekkoNetSubsystem* SS = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
-	const float FramesAhead = SS->GetFramesAhead();
-	constexpr float BaseFrame = ONE_FRAME;
-	
-	const float AheadScale = (FramesAhead > 0.5f) ? 1.016f : 1.0f;
-	const float EffectiveFrame = BaseFrame * AheadScale;
-
-	int32 Steps = 0;
-	constexpr int32 MaxStepsPerTick = 4;
-
-	while (ElapsedTime >= EffectiveFrame && Steps < MaxStepsPerTick)
+	while (ElapsedTime >= ONE_FRAME)
 	{
-		Update();
-		ElapsedTime -= BaseFrame;
-		++Steps;
+		//while elapsed time is greater than one frame...
+		TickGameState();
+		ElapsedTime -= ONE_FRAME;
 	}
 
 	OnUnrealDraw();
@@ -109,7 +96,7 @@ void AGekkoGameState::InitGame()
 	UE_LOG(LogTemp, Error, TEXT("Failed to start the GekkoNet match."));
 }
 
-void AGekkoGameState::Update()
+void AGekkoGameState::TickGameState()
 {
 	UGekkoGameInstance* GI = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
 	if (GI->bLocalPlayEnabled)
@@ -141,7 +128,7 @@ void AGekkoGameState::Update()
 		switch (event->type) {
 		case GekkoDesyncDetected:
 			auto desync = event->data.desynced;
-			UE_LOG(LogTemp, Error, TEXT("DESYNC!!! f:%d, rh:%d, lc:%u, rc:%u"),
+			UE_LOG(LogTemp, Error, TEXT("Desync Detected! f:%d, rh:%d, lc:%u, rc:%u"),
 				desync.frame, desync.remote_handle,
 				desync.local_checksum, desync.remote_checksum);
 			break;
