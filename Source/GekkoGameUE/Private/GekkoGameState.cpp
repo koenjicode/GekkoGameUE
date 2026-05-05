@@ -128,6 +128,7 @@ void AGekkoGameState::UpdateGame()
 		UGekkoNetSubsystem* gekko_system = game_instance->GetSubsystem<UGekkoNetSubsystem>();
 		if (gekko_system->Session == nullptr)
 		{
+			gekko_system->PlayerNumber = game_instance->PlayerId;
 			FGekkoSessionConfig SessionConfig {
 			2,
 			0,
