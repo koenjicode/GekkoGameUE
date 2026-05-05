@@ -163,6 +163,9 @@ void AGekkoGameState::GekkoSave(GekkoGameEvent* Event)
 {
 	*Event->data.save.state_len = sizeof(gs.state);
 	FMemory::Memcpy(Event->data.save.state, &gs.state, sizeof(gs.state));
+	
+	const uint32 Checksum = FCrc::MemCrc32(&gs.state, sizeof(gs.state));
+	*Event->data.save.checksum = Checksum;
 }
 
 void AGekkoGameState::GekkoAdvance(GekkoGameEvent* Event, bool Render)
