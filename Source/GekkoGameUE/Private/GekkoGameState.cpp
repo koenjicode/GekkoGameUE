@@ -87,21 +87,25 @@ GekkoGame::Input AGekkoGameState::PollInput(int32 ControllerIndex) const
 		const float LeftY = PC->GetInputAnalogKeyState(EKeys::Gamepad_LeftY);
 
 		inp.up =
+			PC->IsInputKeyDown(EKeys::W) ||
 			PC->IsInputKeyDown(EKeys::Up) ||
 			PC->IsInputKeyDown(EKeys::Gamepad_DPad_Up) ||
 			LeftY > Deadzone;
 
 		inp.down =
+			PC->IsInputKeyDown(EKeys::S) ||
 			PC->IsInputKeyDown(EKeys::Down) ||
 			PC->IsInputKeyDown(EKeys::Gamepad_DPad_Down) ||
 			LeftY < -Deadzone;
 
 		inp.left =
+			PC->IsInputKeyDown(EKeys::A) ||
 			PC->IsInputKeyDown(EKeys::Left) ||
 			PC->IsInputKeyDown(EKeys::Gamepad_DPad_Left) ||
 			LeftX < -Deadzone;
 
 		inp.right =
+			PC->IsInputKeyDown(EKeys::D) ||
 			PC->IsInputKeyDown(EKeys::Right) ||
 			PC->IsInputKeyDown(EKeys::Gamepad_DPad_Right) ||
 			LeftX > Deadzone;
@@ -138,7 +142,7 @@ void AGekkoGameState::UpdateGame()
 			sizeof(GekkoGame::Gamestate::state),
 			false,
 			0};
-			gekko_system->StartGekko(SessionConfig);
+			gekko_system->StartGekko(SessionConfig, this);
 		}
 		gekko_system->UpdateNetplay();
 	}
