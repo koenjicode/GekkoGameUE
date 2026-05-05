@@ -3,6 +3,7 @@
 
 #include "GekkoGameState.h"
 #include "GekkoGameInstance.h"
+#include "GekkoNetLog.h"
 #include "GekkoNetSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -38,7 +39,7 @@ void AGekkoGameState::Tick(float DeltaSeconds)
 	while (ElapsedTime >= ONE_FRAME)
 	{
 		//while elapsed time is greater than one frame...
-		TickGameState();
+		UpdateGame();
 		ElapsedTime -= ONE_FRAME;
 	}
 
@@ -47,9 +48,10 @@ void AGekkoGameState::Tick(float DeltaSeconds)
 
 void AGekkoGameState::InitGame()
 {
-	UGekkoGameInstance* GI = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
+	UGekkoGameInstance* game_instance = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
 	int32 num_players = 2;
-	if (GI->bLocalPlayEnabled)
+	// make a additional player controller than can accept inputs
+	if (game_instance->bLocalPlayEnabled)
 	{
 		for (int i = 0; i < num_players; ++i)
 		{
@@ -58,136 +60,8 @@ void AGekkoGameState::InitGame()
 				UGameplayStatics::CreatePlayer(GetWorld(), true);
 			}
 		}
-		bStateStarted = true;
-		gs.Init(2);
-		return;
 	}
-	
-	FGekkoSessionConfig config;
-	int player_count = 0;
-	for (int i = 0; i < num_players; ++i)
-	{
-		if (GI->PlayerId == i)
-		{
-			config.AddPlayer();
-			++player_count;
-		}
-		else
-		{
-			if (!GI->RemoteAddresses.IsEmpty())
-			{
-				auto player = GI->RemoteAddresses[0];
-				config.AddPlayer(player.Address, player.Port);
-				++player_count;
-			}
-		}
-	}
-
-	if (player_count == num_players)
-	{
-		config.SessionSize.InputSize = sizeof(GekkoGame::Input);
-		config.SessionSize.StateSize = sizeof(GekkoGame::Gamestate::state);
-	
-		UGekkoNetSubsystem* SS = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
-		SS->SetSessionConfig(config);
-		bStateStarted = SS->CreateSession(GI->LocalPort);
-		gs.Init(config.GetNumberOfPlayers());
-	}
-	UE_LOG(LogTemp, Error, TEXT("Failed to start the GekkoNet match."));
-}
-
-void AGekkoGameState::TickGameState()
-{
-	UGekkoGameInstance* GI = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
-	if (GI->bLocalPlayEnabled)
-	{
-		GekkoGame::Input Inputs[GekkoGame::MAX_PLAYERS] = {};
-		Inputs[0] = PollInput(0);
-		Inputs[1] = PollInput(1);
-		
-		gs.Update(Inputs);
-		return;
-	}
-	
-	UGekkoNetSubsystem* SS = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
-	gekko_network_poll(SS->Session); 
-	
-	auto local_input = PollInput(0);
-	for (int i = 0; i < SS->Config.Players.Num(); ++i)
-	{
-		if (SS->IsLocalPlayer(i))
-		{
-			SS->AddLocalInput(i, &local_input);
-		}
-	}
-	
-	int count = 0;
-	GekkoSessionEvent** events = gekko_session_events(SS->Session, &count);
-	for (int i = 0; i < count; i++) {
-		GekkoSessionEvent* event = events[i];
-		switch (event->type) {
-		case GekkoDesyncDetected:
-			auto desync = event->data.desynced;
-			UE_LOG(LogTemp, Error, TEXT("Desync Detected! f:%d, rh:%d, lc:%u, rc:%u"),
-				desync.frame, desync.remote_handle,
-				desync.local_checksum, desync.remote_checksum);
-			break;
-
-		case GekkoPlayerConnected:
-			auto connect = event->data.connected;
-			UE_LOG(LogTemp, Log, TEXT("Player %d connected"), connect.handle);
-			break;
-
-		case GekkoPlayerDisconnected:
-			auto disconnect = event->data.disconnected;
-			UE_LOG(LogTemp, Warning, TEXT("Player %d disconnected"), disconnect.handle);
-			break;
-
-		case GekkoPlayerSyncing:
-			auto sync = event->data.syncing;
-			UE_LOG(LogTemp, Log, TEXT("Player %d is connecting %d/%d"), 
-				sync.handle, sync.current, sync.max);
-			break;
-		}
-	}
-
-	count = 0;
-	GekkoGameEvent** updates = gekko_update_session(SS->Session, &count);
-	for (int i = 0; i < count; i++) {
-		GekkoGameEvent* event = updates[i];
-		switch (event->type) {
-		case GekkoSaveEvent:
-			*event->data.save.state_len = sizeof(gs.state);
-			*event->data.save.checksum = FCrc::MemCrc32(&gs.state, sizeof(gs.state), 0);
-			memcpy(event->data.save.state, &gs.state, sizeof(gs.state));
-			break;
-
-		case GekkoLoadEvent:
-			memcpy(&gs.state, event->data.load.state, sizeof(gs.state));
-			break;
-
-		case GekkoAdvanceEvent:
-			GekkoGame::Input Inputs[GekkoGame::MAX_PLAYERS] = {};
-			FString InputLog = FString::Printf(TEXT("f%d,"), event->data.adv.frame);
-			for (int32 j = 0; j < SS->Config.GetNumberOfPlayers(); ++j)
-			{
-				Inputs[j] = ((GekkoGame::Input*)(event->data.adv.inputs))[j];
-
-				InputLog += FString::Printf(
-					TEXT(" p%d %d%d%d%d"),
-					j,
-					Inputs[j].left,
-					Inputs[j].right,
-					Inputs[j].up,
-					Inputs[j].down
-				);
-			}
-			UE_LOG(LogTemp, Verbose, TEXT("%s"), *InputLog);
-			gs.Update(Inputs);
-			break;
-		}
-	}
-	OnUnrealDraw();
+	gs.Init(num_players);
 }
 
 GekkoGame::Input AGekkoGameState::PollInput(int32 ControllerIndex) const
@@ -224,6 +98,75 @@ GekkoGame::Input AGekkoGameState::PollInput(int32 ControllerIndex) const
 	}
 
 	return inp;
+}
+
+void AGekkoGameState::UpdateGame()
+{
+	UGekkoGameInstance* game_instance = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
+	if (game_instance->bLocalPlayEnabled)
+	{
+		int32 local_players = 2;
+		GekkoGame::Input Inputs[GekkoGame::MAX_PLAYERS] = {};
+		for (int j = 0; j < local_players; j++)
+		{
+			Inputs[j] = PollInput(j);
+		}
+		gs.Update(Inputs);
+	}
+	else
+	{
+		UGekkoNetSubsystem* gekko_system = game_instance->GetSubsystem<UGekkoNetSubsystem>();
+		if (gekko_system->Session == nullptr)
+		{
+			FGekkoSessionConfig SessionConfig {
+			2,
+			0,
+			10,
+			0,
+			sizeof(GekkoGame::Input),
+			sizeof(GekkoGame::Gamestate::state),
+			false,
+			0};
+			gekko_system->StartGekko(SessionConfig);
+		}
+		gekko_system->UpdateNetplay();
+	}
+}
+
+void AGekkoGameState::GekkoGetLocalInputs(void* OutInputData)
+{
+	GekkoGame::Input LocalInput = PollInput(0);
+	FMemory::Memcpy(OutInputData, &LocalInput, sizeof(GekkoGame::Input));
+}
+
+void AGekkoGameState::GekkoLoad(GekkoGameEvent* Event)
+{
+	FMemory::Memcpy(&gs.state, Event->data.load.state, sizeof(gs.state));
+}
+
+void AGekkoGameState::GekkoSave(GekkoGameEvent* Event)
+{
+	*Event->data.save.state_len = sizeof(gs.state);
+	FMemory::Memcpy(Event->data.save.state, &gs.state, sizeof(gs.state));
+}
+
+void AGekkoGameState::GekkoAdvance(GekkoGameEvent* Event, bool Render)
+{
+	UE_LOG(LogGekkoGame, Log, TEXT("f%d,"), Event->data.adv.frame);
+
+	UGekkoNetSubsystem* gekko_system = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
+	GekkoGame::Input inputs[GekkoGame::MAX_PLAYERS] = {};
+	for (int j = 0; j < gekko_system->NumPlayers; j++) 
+	{
+		inputs[j] = ((GekkoGame::Input*)(Event->data.adv.inputs))[j];
+		UE_LOG(LogGekkoGame, Log, TEXT(" p%d %d%d%d%d"), 
+			   j, 
+			   inputs[j].left, 
+			   inputs[j].right, 
+			   inputs[j].up, 
+			   inputs[j].down);
+	}
+	gs.Update(inputs);
 }
 
 FVector AGekkoGameState::GetPaddlePosition(int32 index) const
