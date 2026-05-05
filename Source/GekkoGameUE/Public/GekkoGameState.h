@@ -19,11 +19,14 @@ class GEKKOGAMEUE_API AGekkoGameState : public AGameStateBase, public IGekkoNetS
 public:
 	AGekkoGameState();
 	
+	void InitGame();
 	virtual void BeginPlay() override;
+	
+	void ShutdownGame();
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	
 	virtual void Tick(float DeltaSeconds) override;
 	
-	void InitGame();
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnUnrealDraw();
 	
@@ -36,6 +39,7 @@ public:
 	virtual void GekkoLoad(GekkoGameEvent* Event) override;
 	virtual void GekkoSave(GekkoGameEvent* Event) override;
 	virtual void GekkoAdvance(GekkoGameEvent* Event, bool Render) override;
+	virtual void GekkoDisconnect(GekkoSessionEvent* Event) override;
 	
 	// Get paddle position in gekko game state.
 	UFUNCTION(BlueprintPure)
@@ -44,8 +48,8 @@ public:
 	UFUNCTION(BlueprintPure)
 	FVector GetBallPosition(int32 index) const;
 	
-	UPROPERTY(BlueprintReadOnly)
-	bool bStateStarted;
+	UPROPERTY(EditDefaultsOnly)
+	TSoftObjectPtr<UWorld> DisconnectLevel;
 
 private:
 	float ElapsedTime;

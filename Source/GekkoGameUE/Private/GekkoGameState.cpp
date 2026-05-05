@@ -3,7 +3,7 @@
 
 #include "GekkoGameState.h"
 #include "GekkoGameInstance.h"
-#include "GekkoNetLog.h"
+#include "GekkoGameLog.h"
 #include "GekkoNetSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -25,27 +25,6 @@ void AGekkoGameState::BeginPlay()
 	InitGame();
 }
 
-void AGekkoGameState::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-	Super::EndPlay(EndPlayReason);
-	gs = {};
-}
-
-void AGekkoGameState::Tick(float DeltaSeconds)
-{
-	Super::Tick(DeltaSeconds);
-
-	ElapsedTime += DeltaSeconds;
-	while (ElapsedTime >= ONE_FRAME)
-	{
-		//while elapsed time is greater than one frame...
-		UpdateGame();
-		ElapsedTime -= ONE_FRAME;
-	}
-
-	OnUnrealDraw();
-}
-
 void AGekkoGameState::InitGame()
 {
 	UGekkoGameInstance* game_instance = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
@@ -62,6 +41,37 @@ void AGekkoGameState::InitGame()
 		}
 	}
 	gs.Init(num_players);
+}
+
+void AGekkoGameState::ShutdownGame()
+{
+	FMemory::Memzero(&gs, sizeof(gs));
+	UGekkoNetSubsystem* gekko_system = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
+	if (gekko_system->Session != nullptr && gekko_system->SessionState != EGekkoSessionState::Exiting)
+	{
+		gekko_system->ShutdownGekko();
+	}
+}
+
+void AGekkoGameState::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	Super::EndPlay(EndPlayReason);
+	ShutdownGame();
+}
+
+void AGekkoGameState::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	ElapsedTime += DeltaSeconds;
+	while (ElapsedTime >= ONE_FRAME)
+	{
+		//while elapsed time is greater than one frame...
+		UpdateGame();
+		ElapsedTime -= ONE_FRAME;
+	}
+
+	OnUnrealDraw();
 }
 
 GekkoGame::Input AGekkoGameState::PollInput(int32 ControllerIndex) const
@@ -135,8 +145,8 @@ void AGekkoGameState::UpdateGame()
 
 void AGekkoGameState::GekkoGetLocalInputs(void* OutInputData)
 {
-	GekkoGame::Input LocalInput = PollInput(0);
-	FMemory::Memcpy(OutInputData, &LocalInput, sizeof(GekkoGame::Input));
+	GekkoGame::Input local_input = PollInput(0);
+	FMemory::Memcpy(OutInputData, &local_input, sizeof(GekkoGame::Input));
 }
 
 void AGekkoGameState::GekkoLoad(GekkoGameEvent* Event)
@@ -167,6 +177,11 @@ void AGekkoGameState::GekkoAdvance(GekkoGameEvent* Event, bool Render)
 			   inputs[j].down);
 	}
 	gs.Update(inputs);
+}
+
+void AGekkoGameState::GekkoDisconnect(GekkoSessionEvent* Event)
+{
+	UGameplayStatics::OpenLevelBySoftObjectPtr(this, DisconnectLevel, true);
 }
 
 FVector AGekkoGameState::GetPaddlePosition(int32 index) const
