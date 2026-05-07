@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "game.h"
 #include "GekkoNetSimulationInterface.h"
+#include "Containers/RingBuffer.h"
 #include "GameFramework/GameStateBase.h"
 #include "GekkoGameState.generated.h"
 
@@ -20,6 +21,7 @@ public:
 	AGekkoGameState();
 	
 	void InitGame();
+	void InitBuffer();
 	virtual void BeginPlay() override;
 	
 	void ShutdownGame();
@@ -30,8 +32,12 @@ public:
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnUnrealDraw();
 	
+	
+	
 	// input gathering
-	GekkoGame::Input PollInput(int32 ControllerIndex) const;
+	void HandleBufferedInput();
+	GekkoGame::Input PollLatestInput(int32 PlayerIndex) const;
+	GekkoGame::Input PollInput(int32 PlayerIndex) const;
 	
 	void UpdateGame();
 	
@@ -48,8 +54,14 @@ public:
 	UFUNCTION(BlueprintPure)
 	FVector GetBallPosition(int32 index) const;
 	
+	TRingBuffer<GekkoGame::Input> P1InputBuffer;
+	TRingBuffer<GekkoGame::Input> P2InputBuffer;
+	
 	UPROPERTY(EditDefaultsOnly)
 	TSoftObjectPtr<UWorld> DisconnectLevel;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	int32 LocalInputDelay = 1;
 
 private:
 	float ElapsedTime;

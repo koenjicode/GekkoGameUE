@@ -11,6 +11,7 @@
 #define ONE_FRAME (1.0f / TARGET_FRAMERATE)
 
 #define MAX_UPDATES_PER_TICK 30
+#define MAX_LOCAL_DELAY_FRAMES 9
 
 
 AGekkoGameState::AGekkoGameState()
@@ -22,6 +23,7 @@ AGekkoGameState::AGekkoGameState()
 void AGekkoGameState::BeginPlay()
 {
 	Super::BeginPlay();
+	InitBuffer();
 	InitGame();
 }
 
@@ -41,6 +43,12 @@ void AGekkoGameState::InitGame()
 		}
 	}
 	gs.Init(num_players);
+}
+
+void AGekkoGameState::InitBuffer()
+{
+	P1InputBuffer.Reserve(MAX_LOCAL_DELAY_FRAMES);
+	P2InputBuffer.Reserve(MAX_LOCAL_DELAY_FRAMES);
 }
 
 void AGekkoGameState::ShutdownGame()
@@ -74,9 +82,24 @@ void AGekkoGameState::Tick(float DeltaSeconds)
 	OnUnrealDraw();
 }
 
-GekkoGame::Input AGekkoGameState::PollInput(int32 ControllerIndex) const
+void AGekkoGameState::HandleBufferedInput()
 {
-	APlayerController* PC = UGameplayStatics::GetPlayerController(this, ControllerIndex);
+	int32 num_players = 2;
+	for (int i = 0; i < num_players; ++i)
+	{
+		TRingBuffer<GekkoGame::Input> &InputBuffer = i == 0 ? P1InputBuffer : P2InputBuffer;
+		if (InputBuffer.Num() == MAX_LOCAL_DELAY_FRAMES)
+		{
+			InputBuffer.PopFront();
+		}
+		// added latest input at the end of the buffer.
+		InputBuffer.Add(PollLatestInput(i));
+	}
+}
+
+GekkoGame::Input AGekkoGameState::PollLatestInput(int32 PlayerIndex) const
+{
+	APlayerController* PC = UGameplayStatics::GetPlayerController(this, PlayerIndex);
 	GekkoGame::Input inp = {};
 
 	if (PC)
@@ -114,11 +137,19 @@ GekkoGame::Input AGekkoGameState::PollInput(int32 ControllerIndex) const
 	return inp;
 }
 
+GekkoGame::Input AGekkoGameState::PollInput(int32 PlayerIndex) const
+{
+	auto InputBuffer = PlayerIndex == 0 ? P1InputBuffer : P2InputBuffer;
+	int32 Index = FMath::Max(MAX_LOCAL_DELAY_FRAMES - LocalInputDelay);
+	return InputBuffer.IsValidIndex(Index) ? InputBuffer[Index] : GekkoGame::Input();
+}
+
 void AGekkoGameState::UpdateGame()
 {
 	UGekkoGameInstance* game_instance = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
 	if (game_instance->bLocalPlayEnabled)
 	{
+		HandleBufferedInput();
 		int32 local_players = 2;
 		GekkoGame::Input Inputs[GekkoGame::MAX_PLAYERS] = {};
 		for (int j = 0; j < local_players; j++)
@@ -150,7 +181,7 @@ void AGekkoGameState::UpdateGame()
 
 void AGekkoGameState::GekkoGetLocalInputs(void* OutInputData)
 {
-	GekkoGame::Input local_input = PollInput(0);
+	GekkoGame::Input local_input = PollLatestInput(0);
 	FMemory::Memcpy(OutInputData, &local_input, sizeof(GekkoGame::Input));
 }
 
