@@ -16,5 +16,7 @@ class GEKKOGAMEUE_API UGekkoGameInstance : public UGameInstance
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bLocalPlayEnabled = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 LocalDelayAmount = 1;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 PlayerId = -1;
 };

@@ -59,9 +59,6 @@ public:
 	
 	UPROPERTY(EditDefaultsOnly)
 	TSoftObjectPtr<UWorld> DisconnectLevel;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	int32 LocalInputDelay = 1;
 
 private:
 	float ElapsedTime;

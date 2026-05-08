@@ -139,9 +139,13 @@ GekkoGame::Input AGekkoGameState::PollLatestInput(int32 PlayerIndex) const
 
 GekkoGame::Input AGekkoGameState::PollInput(int32 PlayerIndex) const
 {
+	UGekkoGameInstance* GI = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
+	int32 LocalDelay = GI ? GI->LocalDelayAmount : 0;
+	
 	auto InputBuffer = PlayerIndex == 0 ? P1InputBuffer : P2InputBuffer;
-	int32 Index = FMath::Max(MAX_LOCAL_DELAY_FRAMES - LocalInputDelay);
-	return InputBuffer.IsValidIndex(Index) ? InputBuffer[Index] : GekkoGame::Input();
+
+	const int32 i = FMath::Max(MAX_LOCAL_DELAY_FRAMES - LocalDelay);
+	return InputBuffer.IsValidIndex(i) ? InputBuffer[i] : GekkoGame::Input();
 }
 
 void AGekkoGameState::UpdateGame()
