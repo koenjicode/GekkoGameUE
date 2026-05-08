@@ -54,10 +54,10 @@ void AGekkoGameState::InitBuffer()
 void AGekkoGameState::ShutdownGame()
 {
 	FMemory::Memzero(&gs, sizeof(gs));
-	UGekkoNetSubsystem* gekko_system = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
-	if (gekko_system->Session != nullptr && gekko_system->SessionState != EGekkoSessionState::Exiting)
+	UGekkoNetSubsystem* GNS = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
+	if (GNS->IsSessionActive() && GNS->GetSessionState() != EGekkoSessionState::Exiting)
 	{
-		gekko_system->ShutdownGekko();
+		GNS->ShutdownGekko();
 	}
 }
 
@@ -150,8 +150,8 @@ GekkoGame::Input AGekkoGameState::PollInput(int32 PlayerIndex) const
 
 void AGekkoGameState::UpdateGame()
 {
-	UGekkoGameInstance* game_instance = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
-	if (game_instance->bLocalPlayEnabled)
+	UGekkoGameInstance* GI = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
+	if (GI->bLocalPlayEnabled)
 	{
 		HandleBufferedInput();
 		int32 local_players = 2;
@@ -164,10 +164,9 @@ void AGekkoGameState::UpdateGame()
 	}
 	else
 	{
-		UGekkoNetSubsystem* gekko_system = game_instance->GetSubsystem<UGekkoNetSubsystem>();
-		if (gekko_system->Session == nullptr)
+		UGekkoNetSubsystem* GNS = GI->GetSubsystem<UGekkoNetSubsystem>();
+		if (!GNS->IsSessionActive())
 		{
-			gekko_system->PlayerNumber = game_instance->PlayerId;
 			FGekkoSessionConfig SessionConfig {
 			2,
 			0,
@@ -177,9 +176,11 @@ void AGekkoGameState::UpdateGame()
 			sizeof(GekkoGame::Gamestate::state),
 			false,
 			0};
-			gekko_system->StartGekko(SessionConfig, this);
+			GNS->SetPlayerID(GI->PlayerId);
+			GNS->SetLocalDelay(GI->LocalDelayAmount);
+			GNS->StartGekko(SessionConfig, this);
 		}
-		gekko_system->UpdateNetplay();
+		GNS->UpdateGekko();
 	}
 }
 
@@ -209,7 +210,7 @@ void AGekkoGameState::GekkoAdvance(GekkoGameEvent* Event, bool Render)
 
 	UGekkoNetSubsystem* gekko_system = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
 	GekkoGame::Input inputs[GekkoGame::MAX_PLAYERS] = {};
-	for (int j = 0; j < gekko_system->NumPlayers; j++) 
+	for (int j = 0; j < gekko_system->GetNumOfPlayers(); j++) 
 	{
 		inputs[j] = ((GekkoGame::Input*)(Event->data.adv.inputs))[j];
 		UE_LOG(LogGekkoGame, Log, TEXT(" p%d %d%d%d%d"), 
