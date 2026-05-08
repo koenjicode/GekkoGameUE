@@ -16,7 +16,8 @@ public class GekkoGameUE : ModuleRules
 			"InputCore",
 			"EnhancedInput",
 			"GekkoNetUE",
-			"GekkoNet"
+			"GekkoNet",
+			"Redo",
 		});
 		
 		PrivateDependencyModuleNames.AddRange(new string[] {  });

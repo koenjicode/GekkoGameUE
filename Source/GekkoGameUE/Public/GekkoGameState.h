@@ -9,6 +9,7 @@
 #include "GameFramework/GameStateBase.h"
 #include "GekkoGameState.generated.h"
 
+class ARedoReplayDriver;
 /**
  * 
  */
@@ -20,8 +21,7 @@ class GEKKOGAMEUE_API AGekkoGameState : public AGameStateBase, public IGekkoNetS
 public:
 	AGekkoGameState();
 	
-	void InitGame();
-	void InitBuffer();
+	void Init();
 	virtual void BeginPlay() override;
 	
 	void ShutdownGame();
@@ -46,6 +46,9 @@ public:
 	virtual void GekkoSave(GekkoGameEvent* Event) override;
 	virtual void GekkoAdvance(GekkoGameEvent* Event, bool Render) override;
 	virtual void GekkoDisconnect(GekkoSessionEvent* Event) override;
+
+	bool IsRecordingMatch() const;
+	bool IsPlayingBackReplay() const;
 	
 	// Get paddle position in gekko game state.
 	UFUNCTION(BlueprintPure)
@@ -59,9 +62,16 @@ public:
 	
 	UPROPERTY(EditDefaultsOnly)
 	TSoftObjectPtr<UWorld> DisconnectLevel;
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<ARedoReplayDriver> ReplayDriverClass;
 
 private:
-	float ElapsedTime;
 	GekkoGame::Gamestate gs = {};
+	
+	float ElapsedTime = 0;
+	int32 LocalFrame = 0;
+
+	UPROPERTY()
+	ARedoReplayDriver* ReplayDriver = nullptr;
 	
 };

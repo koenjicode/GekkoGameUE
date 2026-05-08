@@ -5,6 +5,7 @@
 #include "GekkoGameInstance.h"
 #include "GekkoGameLog.h"
 #include "GekkoNetSubsystem.h"
+#include "RedoReplayDriver.h"
 #include "Kismet/GameplayStatics.h"
 
 #define TARGET_FRAMERATE 60
@@ -16,18 +17,24 @@
 
 AGekkoGameState::AGekkoGameState()
 {
-	PrimaryActorTick.bCanEverTick =	true;
+	PrimaryActorTick.bCanEverTick = true;
 	bReplicates = false;
+
+	ReplayDriverClass = ARedoReplayDriver::StaticClass();
 }
 
 void AGekkoGameState::BeginPlay()
 {
 	Super::BeginPlay();
-	InitBuffer();
-	InitGame();
+	ReplayDriver = GetWorld()->SpawnActor<ARedoReplayDriver>(ReplayDriverClass);
+	if (ReplayDriver)
+	{
+		ReplayDriver->Init(sizeof(GekkoGame::Input), GekkoGame::MAX_PLAYERS);
+	}
+	Init();
 }
 
-void AGekkoGameState::InitGame()
+void AGekkoGameState::Init()
 {
 	UGekkoGameInstance* game_instance = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
 	int32 num_players = 2;
@@ -42,13 +49,9 @@ void AGekkoGameState::InitGame()
 			}
 		}
 	}
-	gs.Init(num_players);
-}
-
-void AGekkoGameState::InitBuffer()
-{
 	P1InputBuffer.Reserve(MAX_LOCAL_DELAY_FRAMES);
 	P2InputBuffer.Reserve(MAX_LOCAL_DELAY_FRAMES);
+	gs.Init(num_players);
 }
 
 void AGekkoGameState::ShutdownGame()
@@ -153,12 +156,23 @@ void AGekkoGameState::UpdateGame()
 	UGekkoGameInstance* GI = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
 	if (GI->bLocalPlayEnabled)
 	{
-		HandleBufferedInput();
 		int32 local_players = 2;
 		GekkoGame::Input Inputs[GekkoGame::MAX_PLAYERS] = {};
-		for (int j = 0; j < local_players; j++)
+		if (IsPlayingBackReplay())
 		{
-			Inputs[j] = PollInput(j);
+			Inputs = ReplayDriver->GetInputsForFrame()
+		}
+		else
+		{
+			HandleBufferedInput();
+			for (int j = 0; j < local_players; j++)
+			{
+				Inputs[j] = PollInput(j);
+			}
+			if (IsRecordingMatch())
+			{
+				ReplayDriver->RecordFrame(0, Inputs);
+			}
 		}
 		gs.Update(Inputs);
 	}
@@ -182,6 +196,24 @@ void AGekkoGameState::UpdateGame()
 		}
 		GNS->UpdateGekko();
 	}
+}
+
+bool AGekkoGameState::IsRecordingMatch() const
+{
+	if (ReplayDriver == nullptr)
+	{
+		return false;
+	}
+	return ReplayDriver->bIsRecording;
+}
+
+bool AGekkoGameState::IsPlayingBackReplay() const
+{
+	if (ReplayDriver == nullptr)
+	{
+		return false;
+	}
+	return !ReplayDriver->bIsRecording;
 }
 
 void AGekkoGameState::GekkoGetLocalInputs(void* OutInputData)

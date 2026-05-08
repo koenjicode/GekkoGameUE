@@ -3,6 +3,8 @@
 
 #include "RedoReplayDriver.h"
 
+#include "RedoReplaySaveData.h"
+
 
 // Sets default values
 ARedoReplayDriver::ARedoReplayDriver()
@@ -11,16 +13,28 @@ ARedoReplayDriver::ARedoReplayDriver()
 	PrimaryActorTick.bCanEverTick = false;
 }
 
-// Called when the game starts or when spawned
-void ARedoReplayDriver::BeginPlay()
+void ARedoReplayDriver::Init(int32 StoreInputSize, int32 NumPlayers)
 {
-	Super::BeginPlay();
+	bIsRecording = ReplayData == nullptr;
+	if (bIsRecording)
+	{
+		ReplayData = NewObject<URedoReplaySaveData>(this);
+		ReplayData->FillHeader(StoreInputSize, NumPlayers);
+	}
+}
+
+void ARedoReplayDriver::RecordFrame(int32 Frame, void* Inputs) const
+{
+	ReplayData->SaveInputs(Frame, Inputs);
+}
+
+void ARedoReplayDriver::GetInputsForFrame(int32 Frame, void& Inputs)
+{
 	
 }
 
-// Called every frame
-void ARedoReplayDriver::Tick(float DeltaTime)
+void ARedoReplayDriver::SetReplayData(URedoReplaySaveData* DataToUse)
 {
-	Super::Tick(DeltaTime);
+	ReplayData = DataToUse;
 }
 

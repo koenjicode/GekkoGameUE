@@ -6,8 +6,10 @@
 #include "GameFramework/Actor.h"
 #include "RedoReplayDriver.generated.h"
 
+class URedoReplaySaveData;
+
 UENUM()
-enum class ERedoReplayState : uint8
+enum class ERedoDriverType : uint8
 {
 	Recording,
 	Playback,
@@ -21,20 +23,16 @@ class REDO_API ARedoReplayDriver : public AActor
 public:
 	ARedoReplayDriver();
 	
-	void InitReplayDriver();
+	void Init(int32 StoreInputSize, int32 NumPlayers);
 	
-	void RecordFrame();
-	void PlayFrame();
-	void RewindFrame();
+	void RecordFrame(int32 Frame, void* Inputs) const;
+	void GetInputsForFrame(int32 Frame, void& Inputs);
+
+	void SetReplayData(URedoReplaySaveData* DataToUse);
+
+	bool bIsRecording;
 	
 private:
-	// stored in the replay file
-	
-	int32 InputSize;
-	
-	// allocated during playback
-	
-	ERedoReplayState ReplayState;
-	int32 SnapshotsPerFrame;
-	int32 StateSize;
+	UPROPERTY()
+	URedoReplaySaveData* ReplayData;
 };
