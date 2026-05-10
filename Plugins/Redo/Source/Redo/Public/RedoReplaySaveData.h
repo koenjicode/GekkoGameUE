@@ -18,6 +18,8 @@ public:
 
 	UPROPERTY(BlueprintReadOnly)  
 	FDateTime Timestamp;
+	UPROPERTY(BlueprintReadOnly)
+	int32 ReplayLengthInFrames;
 	UPROPERTY(BlueprintReadOnly)  
 	int32 InputSizePerPlayer;
 	UPROPERTY(BlueprintReadOnly)  

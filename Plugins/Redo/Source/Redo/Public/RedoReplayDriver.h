@@ -9,7 +9,7 @@
 class URedoReplaySaveData;
 
 UENUM()
-enum class ERedoDriverType : uint8
+enum class ERedoReplayMode : uint8
 {
 	None,
 	Recording,
@@ -24,9 +24,16 @@ class REDO_API ARedoReplayDriver : public AActor
 public:
 	ARedoReplayDriver();
 	
-	void Init(int32 StoreInputSize, int32 NumPlayers, URedoReplaySaveData* DataToUse);
-	void Init(int32 StoreInputSize, int32 NumPlayers);
+	void Init(int32 InStateSize, int32 InInputSize, int32 InPlayerNum, URedoReplaySaveData* DataToUse);
 	void AdvanceLocalFrame();
+	
+	// TODO: Implement core code functions in these updates to make the library easier to use in a plug and play fashion.
+	virtual void UpdateRecording(void* InInputs, bool bAdvanceReplayFrame = true);
+	virtual void UpdatePlayback(void* OutInputs, bool bAdvanceReplayFrame = true);
+	virtual void UpdatePlaybackTakeover(int32 PlayerIndex);
+	
+	virtual void AddSnapshot(void* InSnapshot);
+	virtual bool RewindToSnapshot(int32 InFrame, void* OutState);
 	
 	// record a frame.
 	virtual void RecordInputs(void* InInputs);
@@ -45,20 +52,25 @@ public:
 	void SetReplayData(URedoReplaySaveData* DataToUse);
 	void SetLocalFrame(int32 NewLocalFrame);
 	
-	bool IsRecording() const { return CurrentDriverState == ERedoDriverType::Recording; }
-	ERedoDriverType GetDriverState() const { return CurrentDriverState; }
+	bool IsRecording() const { return CurrentDriverState == ERedoReplayMode::Recording; }
+	ERedoReplayMode GetDriverState() const { return CurrentDriverState; }
+	URedoReplaySaveData* GetReplayData() const { return PlaybackData; }
+	
 	
 private:
-	ERedoDriverType CurrentDriverState = ERedoDriverType::None;
+	ERedoReplayMode CurrentDriverState = ERedoReplayMode::None;
 	int32 LocalReplayFrame;
-
+	
 	int32 InputSizePerPlayer;
-	int32 NumOfPlayers;
+	int32 NumPlayers;
+	
+	int32 StateSize;
+	TArray<uint8> StateSnapshotBuffer;
 	
 	int32 CurrentFrame;
 	
 	TArray<uint8> DataBuffer;
 	
 	UPROPERTY()
-	URedoReplaySaveData* PlaybackReplayData;
+	URedoReplaySaveData* PlaybackData;
 };

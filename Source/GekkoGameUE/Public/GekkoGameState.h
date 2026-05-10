@@ -28,11 +28,15 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	
 	virtual void Tick(float DeltaSeconds) override;
-	
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnUnrealDraw();
 	
-	
+	UFUNCTION(BlueprintCallable)
+	void RewindToSnapshot(int32 InFrame);
+	UFUNCTION(BlueprintCallable)
+	void RewindBackFromCurrentFrame(int32 FramesToRewindBack);
+	UFUNCTION(BlueprintCallable)
+	void FastForwardFromCurrentFrame(int32 FramesToFastForward);
 	
 	// input gathering
 	void HandleBufferedInput();
@@ -46,9 +50,6 @@ public:
 	virtual void GekkoSave(GekkoGameEvent* Event) override;
 	virtual void GekkoAdvance(GekkoGameEvent* Event, bool Render) override;
 	virtual void GekkoDisconnect(GekkoSessionEvent* Event) override;
-
-	bool IsRecordingMatch() const;
-	bool IsPlayingBackReplay() const;
 	
 	// Get paddle position in gekko game state.
 	UFUNCTION(BlueprintPure)
@@ -70,6 +71,7 @@ private:
 	
 	float ElapsedTime = 0;
 	int32 LocalFrame = 0;
+	int32 RemoteFrame = 0;
 
 	UPROPERTY()
 	ARedoReplayDriver* ReplayDriver = nullptr;
