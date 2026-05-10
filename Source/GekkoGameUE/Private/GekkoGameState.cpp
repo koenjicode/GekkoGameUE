@@ -26,20 +26,30 @@ AGekkoGameState::AGekkoGameState()
 void AGekkoGameState::BeginPlay()
 {
 	Super::BeginPlay();
+	UGekkoGameInstance* GI = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
 	ReplayDriver = GetWorld()->SpawnActor<ARedoReplayDriver>(ReplayDriverClass);
 	if (ReplayDriver)
 	{
-		ReplayDriver->Init(sizeof(GekkoGame::Input), GekkoGame::MAX_PLAYERS);
+		URedoReplaySaveData* Save;
+		if (GI && GI->bPlaybackLastSave)
+		{
+			Save = ReplayDriver->FindReplay();
+		}
+		else
+		{
+			Save = nullptr;
+		}
+		ReplayDriver->Init(sizeof(GekkoGame::Input), GekkoGame::MAX_PLAYERS, Save);
 	}
 	Init();
 }
 
 void AGekkoGameState::Init()
 {
-	UGekkoGameInstance* game_instance = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
+	UGekkoGameInstance* GI = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
 	int32 num_players = 2;
 	// make a additional player controller than can accept inputs
-	if (game_instance->bLocalPlayEnabled)
+	if (GI->bLocalPlayEnabled)
 	{
 		for (int i = 0; i < num_players; ++i)
 		{
@@ -68,6 +78,10 @@ void AGekkoGameState::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	Super::EndPlay(EndPlayReason);
 	ShutdownGame();
+	if (IsRecordingMatch())
+	{
+		ReplayDriver->SaveReplay();
+	}
 }
 
 void AGekkoGameState::Tick(float DeltaSeconds)
@@ -91,7 +105,7 @@ void AGekkoGameState::HandleBufferedInput()
 	for (int i = 0; i < num_players; ++i)
 	{
 		TRingBuffer<GekkoGame::Input> &InputBuffer = i == 0 ? P1InputBuffer : P2InputBuffer;
-		if (InputBuffer.Num() == MAX_LOCAL_DELAY_FRAMES)
+		if (InputBuffer.Num() > MAX_LOCAL_DELAY_FRAMES)
 		{
 			InputBuffer.PopFront();
 		}
@@ -147,6 +161,10 @@ GekkoGame::Input AGekkoGameState::PollInput(int32 PlayerIndex) const
 	
 	auto InputBuffer = PlayerIndex == 0 ? P1InputBuffer : P2InputBuffer;
 
+	if (LocalDelay == 0)
+	{
+		return PollLatestInput(PlayerIndex);
+	}
 	const int32 i = FMath::Max(MAX_LOCAL_DELAY_FRAMES - LocalDelay);
 	return InputBuffer.IsValidIndex(i) ? InputBuffer[i] : GekkoGame::Input();
 }
@@ -158,9 +176,13 @@ void AGekkoGameState::UpdateGame()
 	{
 		int32 local_players = 2;
 		GekkoGame::Input Inputs[GekkoGame::MAX_PLAYERS] = {};
+		if (ReplayDriver)
+		{
+			ReplayDriver->AdvanceLocalFrame();
+		}
 		if (IsPlayingBackReplay())
 		{
-			Inputs = ReplayDriver->GetInputsForFrame()
+			ReplayDriver->ReciteInputs(&Inputs);
 		}
 		else
 		{
@@ -171,7 +193,7 @@ void AGekkoGameState::UpdateGame()
 			}
 			if (IsRecordingMatch())
 			{
-				ReplayDriver->RecordFrame(0, Inputs);
+				ReplayDriver->RecordInputs(Inputs);
 			}
 		}
 		gs.Update(Inputs);
@@ -200,20 +222,20 @@ void AGekkoGameState::UpdateGame()
 
 bool AGekkoGameState::IsRecordingMatch() const
 {
-	if (ReplayDriver == nullptr)
+	if (ReplayDriver != nullptr)
 	{
-		return false;
+		return ReplayDriver->IsRecording();
 	}
-	return ReplayDriver->bIsRecording;
+	return false;
 }
 
 bool AGekkoGameState::IsPlayingBackReplay() const
 {
-	if (ReplayDriver == nullptr)
+	if (ReplayDriver != nullptr)
 	{
-		return false;
+		return ReplayDriver->GetDriverState() == ERedoDriverType::Playback;
 	}
-	return !ReplayDriver->bIsRecording;
+	return false;
 }
 
 void AGekkoGameState::GekkoGetLocalInputs(void* OutInputData)
@@ -251,6 +273,11 @@ void AGekkoGameState::GekkoAdvance(GekkoGameEvent* Event, bool Render)
 			   inputs[j].right, 
 			   inputs[j].up, 
 			   inputs[j].down);
+	}
+	if (IsRecordingMatch())
+	{
+		ReplayDriver->SetLocalFrame(Event->data.adv.frame);
+		ReplayDriver->RecordInputs(Event->data.adv.inputs);
 	}
 	gs.Update(inputs);
 }

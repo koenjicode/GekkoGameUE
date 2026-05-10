@@ -16,16 +16,12 @@ class REDO_API URedoReplaySaveData : public USaveGame
 
 public:
 
-	virtual void FillHeader(int32 InputSize, int32 NumOfPlayers);
-	void SaveInputs(int32 Frame, void* Inputs);
-	void GetInputs(int32 Frame, void& OutInputs);
-
-	// header
-
-	uint32 InputSizePerPlayer;
-	uint32 PlayerCount;
-
-	// stored data
-
+	UPROPERTY(BlueprintReadOnly)  
+	FDateTime Timestamp;
+	UPROPERTY(BlueprintReadOnly)  
+	int32 InputSizePerPlayer;
+	UPROPERTY(BlueprintReadOnly)  
+	int32 PlayerCount;
+	UPROPERTY()
 	TArray<uint8> Data;
 };

@@ -11,6 +11,7 @@ class URedoReplaySaveData;
 UENUM()
 enum class ERedoDriverType : uint8
 {
+	None,
 	Recording,
 	Playback,
 };
@@ -23,16 +24,41 @@ class REDO_API ARedoReplayDriver : public AActor
 public:
 	ARedoReplayDriver();
 	
+	void Init(int32 StoreInputSize, int32 NumPlayers, URedoReplaySaveData* DataToUse);
 	void Init(int32 StoreInputSize, int32 NumPlayers);
+	void AdvanceLocalFrame();
 	
-	void RecordFrame(int32 Frame, void* Inputs) const;
-	void GetInputsForFrame(int32 Frame, void& Inputs);
+	// record a frame.
+	virtual void RecordInputs(void* InInputs);
+	// read a specified frame
+	virtual void ReciteInputs(int32 Frame, void* OutInputs);
+	// read the current localreplayframe.
+	virtual void ReciteInputs(void* OutInputs);
+	// reads a specified frame for a particular player index.
+	virtual void ReciteInputsForPlayer(int32 Frame, int32 ForPlayerIndex, void* OutInputs);
+	// reads a specified frame for a particular player index.
+	virtual void ReciteInputsForPlayer(int32 ForPlayerIndex, void* OutInputs);
+	
+	virtual URedoReplaySaveData* FindReplay();
+	virtual void SaveReplay();
 
 	void SetReplayData(URedoReplaySaveData* DataToUse);
-
-	bool bIsRecording;
+	void SetLocalFrame(int32 NewLocalFrame);
+	
+	bool IsRecording() const { return CurrentDriverState == ERedoDriverType::Recording; }
+	ERedoDriverType GetDriverState() const { return CurrentDriverState; }
 	
 private:
+	ERedoDriverType CurrentDriverState = ERedoDriverType::None;
+	int32 LocalReplayFrame;
+
+	int32 InputSizePerPlayer;
+	int32 NumOfPlayers;
+	
+	int32 CurrentFrame;
+	
+	TArray<uint8> DataBuffer;
+	
 	UPROPERTY()
-	URedoReplaySaveData* ReplayData;
+	URedoReplaySaveData* PlaybackReplayData;
 };

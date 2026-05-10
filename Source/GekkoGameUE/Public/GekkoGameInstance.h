@@ -6,6 +6,8 @@
 #include "Engine/GameInstance.h"
 #include "GekkoGameInstance.generated.h"
 
+class URedoReplaySaveData;
+
 UCLASS()
 class GEKKOGAMEUE_API UGekkoGameInstance : public UGameInstance
 {
@@ -15,6 +17,8 @@ class GEKKOGAMEUE_API UGekkoGameInstance : public UGameInstance
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bLocalPlayEnabled = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bPlaybackLastSave = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 LocalDelayAmount = 1;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
