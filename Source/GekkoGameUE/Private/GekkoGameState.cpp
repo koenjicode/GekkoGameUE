@@ -262,6 +262,12 @@ void AGekkoGameState::UpdateGame()
 	}
 }
 
+void AGekkoGameState::UpdateGameState(GekkoGame::Input Inputs[4], GekkoGameEvent* Events)
+{
+	gs.Update(Inputs);
+	++LocalFrame;
+}
+
 void AGekkoGameState::GekkoGetLocalInputs(void* OutInputData)
 {
 	GekkoGame::Input local_input = PollLatestInput(0);

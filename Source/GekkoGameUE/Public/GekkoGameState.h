@@ -44,6 +44,7 @@ public:
 	GekkoGame::Input PollInput(int32 PlayerIndex) const;
 	
 	void UpdateGame();
+	void UpdateGameState(GekkoGame::Input Inputs[], GekkoGameEvent* Events);
 	
 	virtual void GekkoGetLocalInputs(void* OutInputData) override;
 	virtual void GekkoLoad(GekkoGameEvent* Event) override;
