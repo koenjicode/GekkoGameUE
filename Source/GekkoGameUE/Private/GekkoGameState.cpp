@@ -110,6 +110,20 @@ void AGekkoGameState::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	}
 }
 
+void AGekkoGameState::HandleTime()
+{
+	if (ReplayTakeoverStartTimer > 0)
+	{
+		ReplayTakeoverStartTimer -= ONE_FRAME;
+		if (ReplayTakeoverStartTimer <= 0.f)
+		{
+			SetGamePaused(false);
+			UE_LOG(LogGekkoGame, Log, TEXT("Replay takeover started!"));
+		}
+	}
+	ElapsedTime -= ONE_FRAME;
+}
+
 void AGekkoGameState::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
@@ -117,11 +131,11 @@ void AGekkoGameState::Tick(float DeltaSeconds)
 	while (ElapsedTime >= ONE_FRAME)
 	{
 		//while elapsed time is greater than one frame...
-		if (!bGamePaused)
+		if (!ShouldPauseGame())
 		{
 			UpdateGame();
 		}
-		ElapsedTime -= ONE_FRAME;
+		HandleTime();
 	}
 	OnUnrealDraw();
 }
@@ -145,6 +159,35 @@ void AGekkoGameState::RewindBackFromCurrentFrame(int32 FramesToRewindBack)
 void AGekkoGameState::FastForwardFromCurrentFrame(int32 FramesToFastForward)
 {
 	RewindToSnapshot(LocalFrame + FramesToFastForward);
+}
+
+void AGekkoGameState::TakeoverReplay(int32 InTakeoverIndex)
+{
+	if (!ReplayDriver || !ReplayDriver->IsPlayingBackReplay())
+	{
+		return;
+	}
+	ReplayTakeoverIndex = InTakeoverIndex;
+	ReplayTakeoverSnapshotFrame = LocalFrame;
+	
+	ReplayTakeoverStartTimer = 1.f;
+	bReplayTakeoverEnabled = true;
+}
+
+void AGekkoGameState::RewindToTakeoverSnapshot()
+{
+	if (!bReplayTakeoverEnabled)
+	{
+		return;
+	}
+	RewindToSnapshot(ReplayTakeoverSnapshotFrame);
+}
+
+void AGekkoGameState::EndTakeover()
+{
+	RewindToSnapshot(ReplayTakeoverSnapshotFrame);
+	SetGamePaused(true);
+	bReplayTakeoverEnabled = false;
 }
 
 void AGekkoGameState::HandleBuffer()
@@ -250,11 +293,20 @@ void AGekkoGameState::UpdateGame()
 	// grab inputs from replay system if a replay is active.
 	GekkoGame::Input Inputs[GekkoGame::MAX_PLAYERS] = {};
 	bool bResumeGame = true;
+	HandleBuffer();
 	if (bIsReplayPlaying)
 	{
 		if (LocalFrame < ReplayDriver->GetReplayLengthInFrames())
 		{
-			ReplayDriver->UpdatePlayback(Inputs);
+			if (bReplayTakeoverEnabled)
+			{
+				ReplayDriver->UpdatePlayback(Inputs);
+				Inputs[ReplayTakeoverIndex] = PollInput(ReplayTakeoverIndex);
+			}
+			else
+			{
+				ReplayDriver->UpdatePlayback(Inputs);
+			}
 		}
 		else
 		{
@@ -263,7 +315,6 @@ void AGekkoGameState::UpdateGame()
 	}
 	else
 	{
-		HandleBuffer();
 		int32 LocalPlayers = 2;
 		for (int j = 0; j < LocalPlayers; j++)
 		{
@@ -358,20 +409,23 @@ bool AGekkoGameState::CanPause()
 	return !GNS->IsSessionActive();
 }
 
+bool AGekkoGameState::ShouldPauseGame() const
+{
+	return bGamePaused || ReplayTakeoverStartTimer > 0;
+}
+
 void AGekkoGameState::SetGamePaused(bool bPaused)
 {
 	if (CanPause())
 	{
 		bGamePaused = bPaused;
+		UE_LOG(LogGekkoGame, Log, TEXT("%s game frame %d."), bGamePaused ? TEXT("Paused") : TEXT("Unpaused"), LocalFrame);
 	}
 }
 
 void AGekkoGameState::TogglePause()
 {
-	if (CanPause())
-	{
-		bGamePaused = !bGamePaused;
-	}
+	SetGamePaused(!bGamePaused);
 }
 
 FVector AGekkoGameState::GetPaddlePosition(int32 index) const

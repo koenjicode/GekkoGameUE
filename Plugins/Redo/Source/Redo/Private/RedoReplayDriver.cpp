@@ -56,21 +56,6 @@ void ARedoReplayDriver::UpdatePlayback(void* OutInputs,  bool bAdvanceReplayFram
 	}
 }
 
-void ARedoReplayDriver::UpdatePlaybackTakeover(void* OutInputs, int32 PlayerIndex)
-{
-	if (LocalReplayFrame < PlaybackData->ReplayLengthInFrames)
-	{
-		for (int i = 0; i < NumPlayers; ++i)
-		{
-			if (i != PlayerIndex)
-			{
-				ReciteInputsForPlayer(i, OutInputs);
-			}
-		}
-	}
-	AdvanceLocalFrame();
-}
-
 void ARedoReplayDriver::AddSnapshot(void* InSnapshot)
 {
 	StateSnapshotBuffer.AddUninitialized(StateSize);
@@ -129,18 +114,6 @@ void ARedoReplayDriver::ReciteInputs(int32 Frame, void* OutInputs)
 void ARedoReplayDriver::ReciteInputs(void* Inputs)
 {
 	ReciteInputs(LocalReplayFrame, Inputs);
-}
-
-void ARedoReplayDriver::ReciteInputsForPlayer(int32 Frame, int32 ForPlayerIndex, void* OutInputs)
-{
-	int32 InputSize = InputSizePerPlayer * NumPlayers;
-	int32 InputOffset = Frame * InputSize;
-	FMemory::Memcpy(OutInputs, DataBuffer.GetData() + InputOffset + (ForPlayerIndex * InputSizePerPlayer), InputSizePerPlayer);
-}
-
-void ARedoReplayDriver::ReciteInputsForPlayer(int32 ForPlayerIndex, void* OutInputs)
-{
-	ReciteInputsForPlayer(LocalReplayFrame, ForPlayerIndex, OutInputs);
 }
 
 URedoReplaySaveData* ARedoReplayDriver::FindReplay()

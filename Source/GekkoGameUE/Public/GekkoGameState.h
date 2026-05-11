@@ -26,7 +26,8 @@ public:
 	
 	void ShutdownGame();
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-	
+	void HandleTime();
+
 	virtual void Tick(float DeltaSeconds) override;
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnUnrealDraw();
@@ -37,6 +38,13 @@ public:
 	void RewindBackFromCurrentFrame(int32 FramesToRewindBack);
 	UFUNCTION(BlueprintCallable)
 	void FastForwardFromCurrentFrame(int32 FramesToFastForward);
+	
+	UFUNCTION(BlueprintCallable)
+	void TakeoverReplay(int32 InTakeoverIndex);
+	UFUNCTION(BlueprintCallable)
+	void RewindToTakeoverSnapshot();
+	UFUNCTION(BlueprintCallable)
+	void EndTakeover();
 	
 	// input gathering
 	void HandleBuffer();
@@ -56,10 +64,15 @@ public:
 	bool CanRewind();
 	UFUNCTION(BlueprintCallable)
 	bool CanPause();
+	UFUNCTION()
+	bool ShouldPauseGame() const;
 	UFUNCTION(BlueprintCallable)
 	void SetGamePaused(bool bPaused);
 	UFUNCTION(BlueprintCallable)
 	void TogglePause();
+	
+	UFUNCTION(BlueprintPure)
+	ARedoReplayDriver* GetReplayDriver() const { return ReplayDriver; }
 	
 	// Get paddle position in gekko game state.
 	UFUNCTION(BlueprintPure)
@@ -75,12 +88,17 @@ public:
 	TSoftObjectPtr<UWorld> DisconnectLevel;
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<ARedoReplayDriver> ReplayDriverClass;
-
-private:
+	UPROPERTY(BlueprintReadWrite)
 	bool bGamePaused = false;
+	UPROPERTY(BlueprintReadOnly)
+	bool bReplayTakeoverEnabled = false;
+private:
+	int32 ReplayTakeoverIndex = 0;
+	int32 ReplayTakeoverSnapshotFrame = 0;
 	GekkoGame::Gamestate Gs = {};
 	
 	float ElapsedTime = 0;
+	float ReplayTakeoverStartTimer = 0;
 	int32 LocalFrame = 0;
 	int32 RemoteFrame = 0;
 

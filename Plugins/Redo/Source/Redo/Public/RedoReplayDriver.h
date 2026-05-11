@@ -30,7 +30,6 @@ public:
 	// TODO: Implement core code functions in these updates to make the library easier to use in a plug and play fashion.
 	virtual void UpdateRecording(void* InInputs, bool bAdvanceReplayFrame = true);
 	virtual void UpdatePlayback(void* OutInputs, bool bAdvanceReplayFrame = true);
-	virtual void UpdatePlaybackTakeover(void* OutInputs, int32 PlayerIndex);
 	
 	virtual void AddSnapshot(void* InSnapshot);
 	virtual bool RewindToSnapshot(int32 InFrame, void* OutState);
@@ -41,10 +40,6 @@ public:
 	virtual void ReciteInputs(int32 Frame, void* OutInputs);
 	// read the current localreplayframe.
 	virtual void ReciteInputs(void* OutInputs);
-	// reads a specified frame for a particular player index.
-	virtual void ReciteInputsForPlayer(int32 Frame, int32 ForPlayerIndex, void* OutInputs);
-	// reads a specified frame for a particular player index.
-	virtual void ReciteInputsForPlayer(int32 ForPlayerIndex, void* OutInputs);
 	
 	virtual URedoReplaySaveData* FindReplay();
 	virtual void SaveReplay();
