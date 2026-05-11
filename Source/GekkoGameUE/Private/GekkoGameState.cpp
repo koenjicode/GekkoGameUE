@@ -117,7 +117,10 @@ void AGekkoGameState::Tick(float DeltaSeconds)
 	while (ElapsedTime >= ONE_FRAME)
 	{
 		//while elapsed time is greater than one frame...
-		UpdateGame();
+		if (!bGamePaused)
+		{
+			UpdateGame();
+		}
 		ElapsedTime -= ONE_FRAME;
 	}
 	OnUnrealDraw();
@@ -125,7 +128,7 @@ void AGekkoGameState::Tick(float DeltaSeconds)
 
 void AGekkoGameState::RewindToSnapshot(int32 InFrame)
 {
-	if (ReplayDriver)
+	if (CanRewind())
 	{
 		if (ReplayDriver->RewindToSnapshot(InFrame, &Gs.state))
 		{
@@ -301,8 +304,8 @@ void AGekkoGameState::AdvanceGameState(GekkoGame::Input Inputs[4], GekkoGameEven
 
 void AGekkoGameState::GekkoGetLocalInputs(void* OutInputData)
 {
-	GekkoGame::Input local_input = PollLatestInput(0);
-	FMemory::Memcpy(OutInputData, &local_input, sizeof(GekkoGame::Input));
+	GekkoGame::Input LocalInput = PollLatestInput(0);
+	FMemory::Memcpy(OutInputData, &LocalInput, sizeof(GekkoGame::Input));
 }
 
 void AGekkoGameState::GekkoLoad(GekkoGameEvent* Event)
@@ -341,6 +344,34 @@ void AGekkoGameState::GekkoAdvance(GekkoGameEvent* Event, bool Render)
 void AGekkoGameState::GekkoDisconnect(GekkoSessionEvent* Event)
 {
 	UGameplayStatics::OpenLevelBySoftObjectPtr(this, DisconnectLevel, true);
+}
+
+bool AGekkoGameState::CanRewind()
+{
+	return ReplayDriver && ReplayDriver->GetDriverState() == ERedoReplayMode::Playback;
+}
+
+bool AGekkoGameState::CanPause()
+{
+	UGekkoGameInstance* GI = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
+	UGekkoNetSubsystem* GNS = GI->GetSubsystem<UGekkoNetSubsystem>();
+	return !GNS->IsSessionActive();
+}
+
+void AGekkoGameState::SetGamePaused(bool bPaused)
+{
+	if (CanPause())
+	{
+		bGamePaused = bPaused;
+	}
+}
+
+void AGekkoGameState::TogglePause()
+{
+	if (CanPause())
+	{
+		bGamePaused = !bGamePaused;
+	}
 }
 
 FVector AGekkoGameState::GetPaddlePosition(int32 index) const

@@ -52,6 +52,15 @@ public:
 	virtual void GekkoAdvance(GekkoGameEvent* Event, bool Render) override;
 	virtual void GekkoDisconnect(GekkoSessionEvent* Event) override;
 	
+	UFUNCTION(BlueprintCallable)
+	bool CanRewind();
+	UFUNCTION(BlueprintCallable)
+	bool CanPause();
+	UFUNCTION(BlueprintCallable)
+	void SetGamePaused(bool bPaused);
+	UFUNCTION(BlueprintCallable)
+	void TogglePause();
+	
 	// Get paddle position in gekko game state.
 	UFUNCTION(BlueprintPure)
 	FVector GetPaddlePosition(int32 index) const;
@@ -68,6 +77,7 @@ public:
 	TSubclassOf<ARedoReplayDriver> ReplayDriverClass;
 
 private:
+	bool bGamePaused = false;
 	GekkoGame::Gamestate Gs = {};
 	
 	float ElapsedTime = 0;
