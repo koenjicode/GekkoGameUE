@@ -35,22 +35,22 @@ void ARedoReplayDriver::AdvanceLocalFrame()
 
 void ARedoReplayDriver::UpdateRecording(void* InInputs, bool bAdvanceReplayFrame)
 {
+	RecordInputs(InInputs);
 	if (bAdvanceReplayFrame)
 	{
-		LocalReplayFrame++;
+		AdvanceLocalFrame();
 	}
-	RecordInputs(InInputs);
 }
 
 void ARedoReplayDriver::UpdatePlayback(void* OutInputs,  bool bAdvanceReplayFrame)
 {
-	if (bAdvanceReplayFrame)
-	{
-		LocalReplayFrame++;
-	}
 	if (LocalReplayFrame < PlaybackData->ReplayLengthInFrames)
 	{
 		ReciteInputs(LocalReplayFrame, OutInputs);
+	}
+	if (bAdvanceReplayFrame)
+	{
+		AdvanceLocalFrame();
 	}
 }
 
@@ -63,18 +63,19 @@ void ARedoReplayDriver::AddSnapshot(void* InSnapshot)
 	StateSnapshotBuffer.AddUninitialized(StateSize);
 	
 	int32 WriteOffset = (LocalReplayFrame * StateSize);
-	void* Dest = (StateSnapshotBuffer.GetData() + WriteOffset) - StateSize;
+	void* Dest = (StateSnapshotBuffer.GetData() + WriteOffset);
 	FMemory::Memcpy(Dest, InSnapshot, StateSize);
 }
 
 bool ARedoReplayDriver::RewindToSnapshot(int32 InFrame, void* OutState)
 {
+	InFrame = FMath::Max(InFrame, 0);
 	if (!PlaybackData || InFrame > PlaybackData->ReplayLengthInFrames)
 	{
 		return false;
 	}
 	int32 SnapshotOffset = InFrame * StateSize;
-	void* Dest = (StateSnapshotBuffer.GetData() + SnapshotOffset) - StateSize;
+	void* Dest = (StateSnapshotBuffer.GetData() + SnapshotOffset);
 	FMemory::Memcpy(OutState, Dest, StateSize);
 	
 	SetLocalFrame(InFrame);
@@ -84,7 +85,6 @@ bool ARedoReplayDriver::RewindToSnapshot(int32 InFrame, void* OutState)
 void ARedoReplayDriver::RecordInputs(void* InInputs)
 {
 	int32 InputSize = InputSizePerPlayer * NumPlayers;
-	
 	// Allocates the amount of space needed based on the amount of frames passed in comparison to the last time the buffer was scaled.
 	// This is useful if Redo is being used with a rollback solution, we can theoretically get incorrect input buffers. Hopefully!
 	int32 AddSize = (LocalReplayFrame * InputSize) - DataBuffer.Num();
@@ -92,7 +92,7 @@ void ARedoReplayDriver::RecordInputs(void* InInputs)
 	{
 		DataBuffer.AddUninitialized(AddSize);
 	}
-	int32 WriteOffset = (LocalReplayFrame * InputSize) - InputSize;
+	int32 WriteOffset = (LocalReplayFrame * InputSize);
 	FMemory::Memcpy(DataBuffer.GetData() + WriteOffset, InInputs, InputSize);
 }
 
@@ -154,6 +154,6 @@ void ARedoReplayDriver::SetReplayData(URedoReplaySaveData* DataToUse)
 
 void ARedoReplayDriver::SetLocalFrame(int32 NewLocalFrame)
 {
-	LocalReplayFrame = NewLocalFrame;
+	LocalReplayFrame = FMath::Max(NewLocalFrame, 0);
 }
 

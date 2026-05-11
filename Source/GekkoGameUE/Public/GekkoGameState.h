@@ -39,12 +39,12 @@ public:
 	void FastForwardFromCurrentFrame(int32 FramesToFastForward);
 	
 	// input gathering
-	void HandleBufferedInput();
+	void HandleBuffer();
 	GekkoGame::Input PollLatestInput(int32 PlayerIndex) const;
 	GekkoGame::Input PollInput(int32 PlayerIndex) const;
 	
 	void UpdateGame();
-	void UpdateGameState(GekkoGame::Input Inputs[], GekkoGameEvent* Events);
+	void AdvanceGameState(GekkoGame::Input Inputs[], GekkoGameEvent* Event = nullptr);
 	
 	virtual void GekkoGetLocalInputs(void* OutInputData) override;
 	virtual void GekkoLoad(GekkoGameEvent* Event) override;
@@ -68,7 +68,7 @@ public:
 	TSubclassOf<ARedoReplayDriver> ReplayDriverClass;
 
 private:
-	GekkoGame::Gamestate gs = {};
+	GekkoGame::Gamestate Gs = {};
 	
 	float ElapsedTime = 0;
 	int32 LocalFrame = 0;

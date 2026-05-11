@@ -28,9 +28,12 @@ void AGekkoGameState::BeginPlay()
 {
 	Super::BeginPlay();
 	UGekkoGameInstance* GI = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
-	if (GI && GI->bAllowRecording)
+	if (GI)
 	{
-		ReplayDriver = GetWorld()->SpawnActor<ARedoReplayDriver>(ReplayDriverClass);
+		if (GI->bLocalPlayEnabled || GI->bPlaybackLastSave)
+		{
+			ReplayDriver = GetWorld()->SpawnActor<ARedoReplayDriver>(ReplayDriverClass);
+		}
 	}
 	Init();
 }
@@ -52,43 +55,43 @@ void AGekkoGameState::Init()
 	}
 	P1InputBuffer.Reserve(MAX_LOCAL_DELAY_FRAMES);
 	P2InputBuffer.Reserve(MAX_LOCAL_DELAY_FRAMES);
-	gs.Init(num_players);
+	Gs.Init(num_players);
 	if (ReplayDriver)
 	{
 		bool bReplayFound = false;
 		if (GI && GI->bPlaybackLastSave)
 		{
-			if (auto Save = ReplayDriver->FindReplay())
+			if (const auto Save = ReplayDriver->FindReplay())
 			{
 				bReplayFound = true;
-				ReplayDriver->Init(sizeof(gs.state), sizeof(GekkoGame::Input), GekkoGame::MAX_PLAYERS, Save);
+				ReplayDriver->Init(sizeof(Gs.state), sizeof(GekkoGame::Input), GekkoGame::MAX_PLAYERS, Save);
 				int32 SnapshotCount = 0;
 				GekkoGame::Input ReplayInputs[GekkoGame::MAX_PLAYERS] = {};
 				for (int i = 0; i < ReplayDriver->GetReplayData()->ReplayLengthInFrames; ++i)
 				{
 					SnapshotCount++;
+					Gs.Update(ReplayInputs);
 					ReplayDriver->UpdatePlayback(&ReplayInputs);
-					gs.Update(ReplayInputs);
 					if (SnapshotCount >= 1)
 					{
-						ReplayDriver->AddSnapshot(&gs.state);
+						ReplayDriver->AddSnapshot(&Gs.state);
 						SnapshotCount = 0;
 					}
 				}
 				ReplayDriver->SetLocalFrame(0);
-				gs.Init(num_players);
+				Gs.Init(num_players);
 			}
 		}
 		if (!bReplayFound)
 		{
-			ReplayDriver->Init(sizeof(gs.state), sizeof(GekkoGame::Input), GekkoGame::MAX_PLAYERS, nullptr);
+			ReplayDriver->Init(sizeof(Gs.state), sizeof(GekkoGame::Input), GekkoGame::MAX_PLAYERS, nullptr);
 		}
 	}
 }
 
 void AGekkoGameState::ShutdownGame()
 {
-	FMemory::Memzero(&gs, sizeof(gs));
+	FMemory::Memzero(&Gs, sizeof(Gs));
 	UGekkoNetSubsystem* GNS = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
 	if (GNS->IsSessionActive() && GNS->GetSessionState() != EGekkoSessionState::Exiting)
 	{
@@ -123,7 +126,7 @@ void AGekkoGameState::RewindToSnapshot(int32 InFrame)
 {
 	if (ReplayDriver)
 	{
-		if (ReplayDriver->RewindToSnapshot(FMath::Max(0, InFrame), &gs.state))
+		if (ReplayDriver->RewindToSnapshot(InFrame, &Gs.state))
 		{
 			LocalFrame = FMath::Max(0, InFrame);
 		}
@@ -140,7 +143,7 @@ void AGekkoGameState::FastForwardFromCurrentFrame(int32 FramesToFastForward)
 	RewindToSnapshot(LocalFrame + FramesToFastForward);
 }
 
-void AGekkoGameState::HandleBufferedInput()
+void AGekkoGameState::HandleBuffer()
 {
 	int32 num_players = 2;
 	for (int i = 0; i < num_players; ++i)
@@ -212,60 +215,84 @@ GekkoGame::Input AGekkoGameState::PollInput(int32 PlayerIndex) const
 
 void AGekkoGameState::UpdateGame()
 {
+	// handle online play updates, if not online, handle offline updates afterwards.
 	UGekkoGameInstance* GI = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
-	++LocalFrame;
-	if (GI->bLocalPlayEnabled)
-	{
-		GekkoGame::Input Inputs[GekkoGame::MAX_PLAYERS] = {};
-		if (ReplayDriver && ReplayDriver->GetDriverState() == ERedoReplayMode::Playback)
-		{
-			if (LocalFrame < ReplayDriver->GetReplayData()->ReplayLengthInFrames)
-			{
-				ReplayDriver->UpdatePlayback(Inputs);
-				gs.Update(Inputs);
-			}
-		}
-		else
-		{
-			int32 LocalPlayers = 2;
-			HandleBufferedInput();
-			for (int j = 0; j < LocalPlayers; j++)
-			{
-				Inputs[j] = PollInput(j);
-			}
-			if (ReplayDriver)
-			{
-				ReplayDriver->UpdateRecording(Inputs);
-			}
-			gs.Update(Inputs);
-		}
-	}
-	else
+	bool bIsOnlinePlay = !GI->bLocalPlayEnabled;
+	bool bIsReplayPlaying = ReplayDriver && 
+		ReplayDriver->GetDriverState() == ERedoReplayMode::Playback;
+	
+	if (bIsOnlinePlay)
 	{
 		UGekkoNetSubsystem* GNS = GI->GetSubsystem<UGekkoNetSubsystem>();
 		if (!GNS->IsSessionActive())
 		{
 			FGekkoSessionConfig SessionConfig {
-			2,
-			0,
-			10,
-			0,
-			sizeof(GekkoGame::Input),
-			sizeof(GekkoGame::Gamestate::state),
-			false,
-			0};
+				2,
+				0,
+				10,
+				0,
+				sizeof(GekkoGame::Input),
+				sizeof(GekkoGame::Gamestate::state),
+				false,
+				0};
 			GNS->SetPlayerID(GI->PlayerId);
 			GNS->SetLocalDelay(GI->LocalDelayAmount);
 			GNS->StartGekko(SessionConfig, this);
 		}
 		GNS->UpdateGekko();
+		return;
+	}
+	
+	// grab inputs from replay system if a replay is active.
+	GekkoGame::Input Inputs[GekkoGame::MAX_PLAYERS] = {};
+	bool bResumeGame = true;
+	if (bIsReplayPlaying)
+	{
+		if (LocalFrame < ReplayDriver->GetReplayData()->ReplayLengthInFrames)
+		{
+			ReplayDriver->UpdatePlayback(Inputs);
+			bResumeGame = false;
+		}
+	}
+	else
+	{
+		HandleBuffer();
+		int32 LocalPlayers = 2;
+		for (int j = 0; j < LocalPlayers; j++)
+		{
+			Inputs[j] = PollInput(j);
+		}
+	}
+	if (bResumeGame)
+	{
+		AdvanceGameState(Inputs);
 	}
 }
 
-void AGekkoGameState::UpdateGameState(GekkoGame::Input Inputs[4], GekkoGameEvent* Events)
+void AGekkoGameState::AdvanceGameState(GekkoGame::Input Inputs[4], GekkoGameEvent* Event)
 {
-	gs.Update(Inputs);
+	bool bIsOnlinePlay = Event != nullptr;
+	bool bIsRecordingMatch = ReplayDriver && 
+		ReplayDriver->GetDriverState() == ERedoReplayMode::Recording;
+	Gs.Update(Inputs);
+	if (bIsRecordingMatch)
+	{
+		if (bIsOnlinePlay)
+		{
+			bool bIsRollingBack = false;
+			if (Event->data.adv.rolling_back)
+			{
+				ReplayDriver->SetLocalFrame(Event->data.adv.frame);
+				bIsRollingBack = true;
+			}
+			ReplayDriver->UpdateRecording(Inputs, !bIsRollingBack);
+		}
+	}
 	++LocalFrame;
+	if (bIsOnlinePlay)
+	{
+		++RemoteFrame;
+	}
 }
 
 void AGekkoGameState::GekkoGetLocalInputs(void* OutInputData)
@@ -276,22 +303,21 @@ void AGekkoGameState::GekkoGetLocalInputs(void* OutInputData)
 
 void AGekkoGameState::GekkoLoad(GekkoGameEvent* Event)
 {
-	FMemory::Memcpy(&gs.state, Event->data.load.state, sizeof(gs.state));
+	FMemory::Memcpy(&Gs.state, Event->data.load.state, sizeof(Gs.state));
 }
 
 void AGekkoGameState::GekkoSave(GekkoGameEvent* Event)
 {
-	*Event->data.save.state_len = sizeof(gs.state);
-	FMemory::Memcpy(Event->data.save.state, &gs.state, sizeof(gs.state));
+	*Event->data.save.state_len = sizeof(Gs.state);
+	FMemory::Memcpy(Event->data.save.state, &Gs.state, sizeof(Gs.state));
 	
-	const uint32 Checksum = FCrc::MemCrc32(&gs.state, sizeof(gs.state));
+	const uint32 Checksum = FCrc::MemCrc32(&Gs.state, sizeof(Gs.state));
 	*Event->data.save.checksum = Checksum;
 }
 
 void AGekkoGameState::GekkoAdvance(GekkoGameEvent* Event, bool Render)
 {
 	UE_LOG(LogGekkoGame, Log, TEXT("f%d,"), Event->data.adv.frame);
-
 	UGekkoNetSubsystem* GNS = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
 	GekkoGame::Input inputs[GekkoGame::MAX_PLAYERS] = {};
 	for (int j = 0; j < GNS->GetNumOfPlayers(); j++) 
@@ -304,17 +330,8 @@ void AGekkoGameState::GekkoAdvance(GekkoGameEvent* Event, bool Render)
 			   inputs[j].up, 
 			   inputs[j].down);
 	}
-	if (ReplayDriver && ReplayDriver->GetDriverState() == ERedoReplayMode::Recording)
-	{
-		bool Rollback = Event->data.adv.rolling_back;
-		if (Rollback)
-		{
-			ReplayDriver->SetLocalFrame(Event->data.adv.frame);
-		}
-		ReplayDriver->UpdateRecording(Event->data.adv.inputs, !Rollback);
-	}
 	RemoteFrame = Event->data.adv.frame;
-	gs.Update(inputs);
+	AdvanceGameState(inputs, Event);
 }
 
 void AGekkoGameState::GekkoDisconnect(GekkoSessionEvent* Event)
@@ -327,8 +344,8 @@ FVector AGekkoGameState::GetPaddlePosition(int32 index) const
 	FVector pos;
 	int game_scale = GekkoGame::GAME_SCALE;
 	
-	pos.X = gs.state.e_pos[index].x / game_scale; 
-	pos.Z = gs.state.e_pos[index].y / game_scale;
+	pos.X = Gs.state.e_pos[index].x / game_scale; 
+	pos.Z = Gs.state.e_pos[index].y / game_scale;
 	
 	return pos;
 }
@@ -340,8 +357,8 @@ FVector AGekkoGameState::GetBallPosition(int32 index) const
 	
 	int game_scale = GekkoGame::GAME_SCALE;
 	
-	pos.X = gs.state.e_pos[ball_index].x / game_scale;
-	pos.Z = gs.state.e_pos[ball_index].y / game_scale; 
+	pos.X = Gs.state.e_pos[ball_index].x / game_scale;
+	pos.Z = Gs.state.e_pos[ball_index].y / game_scale; 
 	
 	return pos;
 }
