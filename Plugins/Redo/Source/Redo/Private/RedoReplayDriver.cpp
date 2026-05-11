@@ -56,8 +56,19 @@ void ARedoReplayDriver::UpdatePlayback(void* OutInputs,  bool bAdvanceReplayFram
 	}
 }
 
-void ARedoReplayDriver::UpdatePlaybackTakeover(int32 PlayerIndex)
+void ARedoReplayDriver::UpdatePlaybackTakeover(void* OutInputs, int32 PlayerIndex)
 {
+	if (LocalReplayFrame < PlaybackData->ReplayLengthInFrames)
+	{
+		for (int i = 0; i < NumPlayers; ++i)
+		{
+			if (i != PlayerIndex)
+			{
+				ReciteInputsForPlayer(i, OutInputs);
+			}
+		}
+	}
+	AdvanceLocalFrame();
 }
 
 void ARedoReplayDriver::AddSnapshot(void* InSnapshot)

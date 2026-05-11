@@ -30,7 +30,7 @@ public:
 	// TODO: Implement core code functions in these updates to make the library easier to use in a plug and play fashion.
 	virtual void UpdateRecording(void* InInputs, bool bAdvanceReplayFrame = true);
 	virtual void UpdatePlayback(void* OutInputs, bool bAdvanceReplayFrame = true);
-	virtual void UpdatePlaybackTakeover(int32 PlayerIndex);
+	virtual void UpdatePlaybackTakeover(void* OutInputs, int32 PlayerIndex);
 	
 	virtual void AddSnapshot(void* InSnapshot);
 	virtual bool RewindToSnapshot(int32 InFrame, void* OutState);
@@ -52,10 +52,17 @@ public:
 	void SetReplayData(URedoReplaySaveData* DataToUse);
 	void SetLocalFrame(int32 NewLocalFrame);
 	
+	UFUNCTION(BlueprintPure)
 	bool IsRecording() const { return CurrentDriverState == ERedoReplayMode::Recording; }
+	UFUNCTION(BlueprintPure)
+	bool IsPlayingBackReplay() const { return CurrentDriverState == ERedoReplayMode::Playback; }
+	UFUNCTION(BlueprintPure)
 	int32 GetReplayFrame() const { return LocalReplayFrame; }
+	UFUNCTION(BlueprintPure)
 	ERedoReplayMode GetDriverState() const { return CurrentDriverState; }
+	UFUNCTION(BlueprintPure)
 	URedoReplaySaveData* GetReplayData() const { return PlaybackData; }
+	UFUNCTION(BlueprintPure)
 	int32 GetReplayLengthInFrames() const;
 	
 	
