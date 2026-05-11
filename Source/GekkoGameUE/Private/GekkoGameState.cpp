@@ -70,13 +70,14 @@ void AGekkoGameState::Init()
 				for (int i = 0; i < ReplayDriver->GetReplayData()->ReplayLengthInFrames; ++i)
 				{
 					SnapshotCount++;
+					ReplayDriver->UpdatePlayback(&ReplayInputs, false);
 					Gs.Update(ReplayInputs);
-					ReplayDriver->UpdatePlayback(&ReplayInputs);
 					if (SnapshotCount >= 1)
 					{
 						ReplayDriver->AddSnapshot(&Gs.state);
 						SnapshotCount = 0;
 					}
+					ReplayDriver->AdvanceLocalFrame();
 				}
 				ReplayDriver->SetLocalFrame(0);
 				Gs.Init(num_players);
@@ -128,7 +129,7 @@ void AGekkoGameState::RewindToSnapshot(int32 InFrame)
 	{
 		if (ReplayDriver->RewindToSnapshot(InFrame, &Gs.state))
 		{
-			LocalFrame = FMath::Max(0, InFrame);
+			LocalFrame = ReplayDriver->GetReplayFrame();
 		}
 	}
 }
@@ -248,9 +249,12 @@ void AGekkoGameState::UpdateGame()
 	bool bResumeGame = true;
 	if (bIsReplayPlaying)
 	{
-		if (LocalFrame < ReplayDriver->GetReplayData()->ReplayLengthInFrames)
+		if (LocalFrame < ReplayDriver->GetReplayLengthInFrames())
 		{
 			ReplayDriver->UpdatePlayback(Inputs);
+		}
+		else
+		{
 			bResumeGame = false;
 		}
 	}
@@ -277,16 +281,16 @@ void AGekkoGameState::AdvanceGameState(GekkoGame::Input Inputs[4], GekkoGameEven
 	Gs.Update(Inputs);
 	if (bIsRecordingMatch)
 	{
+		bool bIsRollingBack = false;
 		if (bIsOnlinePlay)
 		{
-			bool bIsRollingBack = false;
 			if (Event->data.adv.rolling_back)
 			{
 				ReplayDriver->SetLocalFrame(Event->data.adv.frame);
 				bIsRollingBack = true;
 			}
-			ReplayDriver->UpdateRecording(Inputs, !bIsRollingBack);
 		}
+		ReplayDriver->UpdateRecording(Inputs, !bIsRollingBack);
 	}
 	++LocalFrame;
 	if (bIsOnlinePlay)

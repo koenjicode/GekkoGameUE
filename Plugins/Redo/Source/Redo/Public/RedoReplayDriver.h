@@ -53,8 +53,10 @@ public:
 	void SetLocalFrame(int32 NewLocalFrame);
 	
 	bool IsRecording() const { return CurrentDriverState == ERedoReplayMode::Recording; }
+	int32 GetReplayFrame() const { return LocalReplayFrame; }
 	ERedoReplayMode GetDriverState() const { return CurrentDriverState; }
 	URedoReplaySaveData* GetReplayData() const { return PlaybackData; }
+	int32 GetReplayLengthInFrames() const;
 	
 	
 private:
@@ -66,8 +68,6 @@ private:
 	
 	int32 StateSize;
 	TArray<uint8> StateSnapshotBuffer;
-	
-	int32 CurrentFrame;
 	
 	TArray<uint8> DataBuffer;
 	

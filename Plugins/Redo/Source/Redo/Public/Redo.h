@@ -4,6 +4,8 @@
 
 #include "Modules/ModuleManager.h"
 
+REDO_API DECLARE_LOG_CATEGORY_EXTERN(LogRedo, Log, All);
+
 class FRedoModule : public IModuleInterface
 {
 public:
