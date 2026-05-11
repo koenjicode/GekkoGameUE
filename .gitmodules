@@ -1,3 +1,6 @@
 [submodule "Plugins/GekkoNetUE"]
 	path = Plugins/GekkoNetUE
 	url = https://github.com/koenjicode/GekkoNetUE.git
+[submodule "Plugins/RedoUE"]
+	path = Plugins/RedoUE
+	url = https://github.com/koenjicode/RedoUE.git
