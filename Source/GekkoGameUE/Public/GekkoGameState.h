@@ -9,7 +9,7 @@
 #include "GameFramework/GameStateBase.h"
 #include "GekkoGameState.generated.h"
 
-class ARedoReplayDriver;
+class ARedoReplayManager;
 /**
  * 
  */
@@ -32,21 +32,26 @@ public:
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnUnrealDraw();
 	
+	// Rewind/Fast Forward to a collected snapshot.
 	UFUNCTION(BlueprintCallable)
 	void RewindToSnapshot(int32 InFrame);
+	// Rewind back a specified number of frames from the current frame.
 	UFUNCTION(BlueprintCallable)
 	void RewindBackFromCurrentFrame(int32 FramesToRewindBack);
+	// Fast forward a specified number of frames from the current frame.
 	UFUNCTION(BlueprintCallable)
 	void FastForwardFromCurrentFrame(int32 FramesToFastForward);
 	
+	// Specify a player to take control of a Character whilst a replay is actively running.
 	UFUNCTION(BlueprintCallable)
 	void TakeoverReplay(int32 InTakeoverIndex);
+	// Rewind to the snapshot that was chosen when replay takeover was called.
 	UFUNCTION(BlueprintCallable)
 	void RewindToTakeoverSnapshot();
+	// Exit out of replay takeover mode.
 	UFUNCTION(BlueprintCallable)
 	void EndTakeover();
 	
-	// input gathering
 	void HandleBuffer();
 	GekkoGame::Input PollLatestInput(int32 PlayerIndex) const;
 	GekkoGame::Input PollInput(int32 PlayerIndex) const;
@@ -60,19 +65,24 @@ public:
 	virtual void GekkoAdvance(GekkoGameEvent* Event, bool Render) override;
 	virtual void GekkoDisconnect(GekkoSessionEvent* Event) override;
 	
+	// Checks if the game is able to rewind at its current frame.
 	UFUNCTION(BlueprintCallable)
 	bool CanRewind();
+	// Check if the game can pause at its current frame.
 	UFUNCTION(BlueprintCallable)
 	bool CanPause();
 	UFUNCTION()
 	bool ShouldPauseGame() const;
+	// Set whether the game state is paused.
 	UFUNCTION(BlueprintCallable)
 	void SetGamePaused(bool bPaused);
+	// Toggle whether the game state should be paused.
 	UFUNCTION(BlueprintCallable)
 	void TogglePause();
 	
+	// Get the replay manager.
 	UFUNCTION(BlueprintPure)
-	ARedoReplayDriver* GetReplayDriver() const { return ReplayDriver; }
+	ARedoReplayManager* GetReplayManager() const { return ReplayManager; }
 	
 	// Get paddle position in gekko game state.
 	UFUNCTION(BlueprintPure)
@@ -84,12 +94,16 @@ public:
 	TRingBuffer<GekkoGame::Input> P1InputBuffer;
 	TRingBuffer<GekkoGame::Input> P2InputBuffer;
 	
+	// Gameplay class that handles collecting inputs and saving them out to a replay.
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<ARedoReplayManager> ReplayManagerClass;
+	// Fallback level on a discconect.
 	UPROPERTY(EditDefaultsOnly)
 	TSoftObjectPtr<UWorld> DisconnectLevel;
-	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<ARedoReplayDriver> ReplayDriverClass;
+	// Whether the Pong game state is paused or not.
 	UPROPERTY(BlueprintReadWrite)
 	bool bGamePaused = false;
+	// Whether a player has taken control of a replay.
 	UPROPERTY(BlueprintReadOnly)
 	bool bReplayTakeoverEnabled = false;
 private:
@@ -103,6 +117,6 @@ private:
 	int32 RemoteFrame = 0;
 
 	UPROPERTY()
-	ARedoReplayDriver* ReplayDriver = nullptr;
+	ARedoReplayManager* ReplayManager = nullptr;
 	
 };

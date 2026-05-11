@@ -5,7 +5,7 @@
 #include "GekkoGameInstance.h"
 #include "GekkoGameLog.h"
 #include "GekkoNetSubsystem.h"
-#include "RedoReplayDriver.h"
+#include "RedoReplayManager.h"
 #include "RedoReplaySaveData.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -21,7 +21,7 @@ AGekkoGameState::AGekkoGameState()
 	PrimaryActorTick.bCanEverTick = true;
 	bReplicates = false;
 
-	ReplayDriverClass = ARedoReplayDriver::StaticClass();
+	ReplayManagerClass = ARedoReplayManager::StaticClass();
 }
 
 void AGekkoGameState::BeginPlay()
@@ -32,7 +32,7 @@ void AGekkoGameState::BeginPlay()
 	{
 		if (GI->bLocalPlayEnabled || GI->bPlaybackLastSave)
 		{
-			ReplayDriver = GetWorld()->SpawnActor<ARedoReplayDriver>(ReplayDriverClass);
+			ReplayManager = GetWorld()->SpawnActor<ARedoReplayManager>(ReplayManagerClass);
 		}
 	}
 	Init();
@@ -56,36 +56,36 @@ void AGekkoGameState::Init()
 	P1InputBuffer.Reserve(MAX_LOCAL_DELAY_FRAMES);
 	P2InputBuffer.Reserve(MAX_LOCAL_DELAY_FRAMES);
 	Gs.Init(num_players);
-	if (ReplayDriver)
+	if (ReplayManager)
 	{
 		bool bReplayFound = false;
 		if (GI && GI->bPlaybackLastSave)
 		{
-			if (const auto Save = ReplayDriver->FindReplay())
+			if (const auto Save = ReplayManager->FindReplay("REPLAY"))
 			{
 				bReplayFound = true;
-				ReplayDriver->Init(sizeof(Gs.state), sizeof(GekkoGame::Input), GekkoGame::MAX_PLAYERS, Save);
+				ReplayManager->Init(sizeof(Gs.state), sizeof(GekkoGame::Input), GekkoGame::MAX_PLAYERS, Save);
 				int32 SnapshotCount = 0;
 				GekkoGame::Input ReplayInputs[GekkoGame::MAX_PLAYERS] = {};
-				for (int i = 0; i < ReplayDriver->GetReplayData()->ReplayLengthInFrames; ++i)
+				for (int i = 0; i < ReplayManager->GetReplayData()->ReplayLengthInFrames; ++i)
 				{
 					SnapshotCount++;
-					ReplayDriver->UpdatePlayback(&ReplayInputs, false);
+					ReplayManager->RetrieveInputsFromReplay(&ReplayInputs);
 					Gs.Update(ReplayInputs);
 					if (SnapshotCount >= 1)
 					{
-						ReplayDriver->AddSnapshot(&Gs.state);
+						ReplayManager->AddSnapshot(&Gs.state);
 						SnapshotCount = 0;
 					}
-					ReplayDriver->AdvanceLocalFrame();
+					ReplayManager->AdvanceLocalFrame();
 				}
-				ReplayDriver->SetLocalFrame(0);
+				ReplayManager->SetLocalFrame(0);
 				Gs.Init(num_players);
 			}
 		}
 		if (!bReplayFound)
 		{
-			ReplayDriver->Init(sizeof(Gs.state), sizeof(GekkoGame::Input), GekkoGame::MAX_PLAYERS, nullptr);
+			ReplayManager->Init(sizeof(Gs.state), sizeof(GekkoGame::Input), GekkoGame::MAX_PLAYERS, nullptr);
 		}
 	}
 }
@@ -104,9 +104,9 @@ void AGekkoGameState::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	Super::EndPlay(EndPlayReason);
 	ShutdownGame();
-	if (ReplayDriver && ReplayDriver->GetDriverState() == ERedoReplayMode::Recording)
+	if (ReplayManager && ReplayManager->GetManagerBehaviour() == ERedoReplayMode::Recording)
 	{
-		ReplayDriver->SaveReplay();
+		ReplayManager->SaveReplay();
 	}
 }
 
@@ -144,9 +144,9 @@ void AGekkoGameState::RewindToSnapshot(int32 InFrame)
 {
 	if (CanRewind())
 	{
-		if (ReplayDriver->RewindToSnapshot(InFrame, &Gs.state))
+		if (ReplayManager->RewindToSnapshot(InFrame, &Gs.state))
 		{
-			LocalFrame = ReplayDriver->GetReplayFrame();
+			LocalFrame = ReplayManager->GetReplayFrame();
 		}
 	}
 }
@@ -163,7 +163,7 @@ void AGekkoGameState::FastForwardFromCurrentFrame(int32 FramesToFastForward)
 
 void AGekkoGameState::TakeoverReplay(int32 InTakeoverIndex)
 {
-	if (!ReplayDriver || !ReplayDriver->IsPlayingBackReplay())
+	if (!ReplayManager || !ReplayManager->IsPlayingBackReplay())
 	{
 		return;
 	}
@@ -265,8 +265,8 @@ void AGekkoGameState::UpdateGame()
 	// handle online play updates, if not online, handle offline updates afterwards.
 	UGekkoGameInstance* GI = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
 	bool bIsOnlinePlay = !GI->bLocalPlayEnabled;
-	bool bIsReplayPlaying = ReplayDriver && 
-		ReplayDriver->GetDriverState() == ERedoReplayMode::Playback;
+	bool bIsReplayPlaying = ReplayManager && 
+		ReplayManager->GetManagerBehaviour() == ERedoReplayMode::Playback;
 	
 	if (bIsOnlinePlay)
 	{
@@ -296,16 +296,12 @@ void AGekkoGameState::UpdateGame()
 	HandleBuffer();
 	if (bIsReplayPlaying)
 	{
-		if (LocalFrame < ReplayDriver->GetReplayLengthInFrames())
+		if (LocalFrame < ReplayManager->GetReplayLengthInFrames())
 		{
+			ReplayManager->RetrieveInputsFromReplay(&Inputs);
 			if (bReplayTakeoverEnabled)
 			{
-				ReplayDriver->UpdatePlayback(Inputs);
 				Inputs[ReplayTakeoverIndex] = PollInput(ReplayTakeoverIndex);
-			}
-			else
-			{
-				ReplayDriver->UpdatePlayback(Inputs);
 			}
 		}
 		else
@@ -329,27 +325,26 @@ void AGekkoGameState::UpdateGame()
 
 void AGekkoGameState::AdvanceGameState(GekkoGame::Input Inputs[4], GekkoGameEvent* Event)
 {
-	bool bIsOnlinePlay = Event != nullptr;
-	bool bIsRecordingMatch = ReplayDriver && 
-		ReplayDriver->GetDriverState() == ERedoReplayMode::Recording;
-	Gs.Update(Inputs);
-	if (bIsRecordingMatch)
+	if (ReplayManager)
 	{
-		bool bIsRollingBack = false;
-		if (bIsOnlinePlay)
+		if (ReplayManager->IsRecording())
 		{
-			if (Event->data.adv.rolling_back)
+			if (Event && Event->data.adv.rolling_back)
 			{
-				ReplayDriver->SetLocalFrame(Event->data.adv.frame);
-				bIsRollingBack = true;
+				ReplayManager->SetLocalFrame(Event->data.adv.frame);
 			}
+			ReplayManager->RecordInputsForReplay(Inputs);
 		}
-		ReplayDriver->UpdateRecording(Inputs, !bIsRollingBack);
 	}
+	Gs.Update(Inputs);
 	++LocalFrame;
-	if (bIsOnlinePlay)
+	if (Event != nullptr)
 	{
 		++RemoteFrame;
+	}
+	if (ReplayManager)
+	{
+		ReplayManager->AdvanceLocalFrame();
 	}
 }
 
@@ -399,7 +394,7 @@ void AGekkoGameState::GekkoDisconnect(GekkoSessionEvent* Event)
 
 bool AGekkoGameState::CanRewind()
 {
-	return ReplayDriver && ReplayDriver->GetDriverState() == ERedoReplayMode::Playback;
+	return ReplayManager && ReplayManager->GetManagerBehaviour() == ERedoReplayMode::Playback;
 }
 
 bool AGekkoGameState::CanPause()

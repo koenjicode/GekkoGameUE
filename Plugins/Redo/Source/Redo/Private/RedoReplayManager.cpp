@@ -1,19 +1,17 @@
 ﻿
-#include "RedoReplayDriver.h"
-
+#include "RedoReplayManager.h"
 #include "Redo.h"
 #include "RedoReplaySaveData.h"
 #include "Kismet/GameplayStatics.h"
 
-#define SNAPSHOT_FRAME_INTERVAL 1
 #define LAST_SNAPSHOT_FRAME_PADDING 1
 
-ARedoReplayDriver::ARedoReplayDriver()
+ARedoReplayManager::ARedoReplayManager()
 {
 	PrimaryActorTick.bCanEverTick = false;
 }
 
-void ARedoReplayDriver::Init(int32 InStateSize, int32 InInputSize, int32 InPlayerNum, URedoReplaySaveData* DataToUse)
+void ARedoReplayManager::Init(int32 InStateSize, int32 InInputSize, int32 InPlayerNum, URedoReplaySaveData* DataToUse, int32 SnapshotFrameInterval)
 {
 	StateSize = InStateSize;
 	InputSizePerPlayer = InInputSize;
@@ -21,42 +19,16 @@ void ARedoReplayDriver::Init(int32 InStateSize, int32 InInputSize, int32 InPlaye
 	if (DataToUse)
 	{
 		PlaybackData = DataToUse;
-		CurrentDriverState = ERedoReplayMode::Playback;
-		StateSnapshotBuffer.Reserve((PlaybackData->ReplayLengthInFrames / SNAPSHOT_FRAME_INTERVAL) * StateSize);
+		CurrentReplayBehaviour = ERedoReplayMode::Playback;
+		StateSnapshotBuffer.Reserve((PlaybackData->ReplayLengthInFrames / SnapshotFrameInterval) * StateSize);
 	}
 	else
 	{
-		CurrentDriverState = ERedoReplayMode::Recording;
+		CurrentReplayBehaviour = ERedoReplayMode::Recording;
 	}
 }
 
-void ARedoReplayDriver::AdvanceLocalFrame()
-{
-	LocalReplayFrame++;
-}
-
-void ARedoReplayDriver::UpdateRecording(void* InInputs, bool bAdvanceReplayFrame)
-{
-	RecordInputs(InInputs);
-	if (bAdvanceReplayFrame)
-	{
-		AdvanceLocalFrame();
-	}
-}
-
-void ARedoReplayDriver::UpdatePlayback(void* OutInputs,  bool bAdvanceReplayFrame)
-{
-	if (LocalReplayFrame < PlaybackData->ReplayLengthInFrames)
-	{
-		ReciteInputs(LocalReplayFrame, OutInputs);
-	}
-	if (bAdvanceReplayFrame)
-	{
-		AdvanceLocalFrame();
-	}
-}
-
-void ARedoReplayDriver::AddSnapshot(void* InSnapshot)
+void ARedoReplayManager::AddSnapshot(void* InSnapshot)
 {
 	StateSnapshotBuffer.AddUninitialized(StateSize);
 	
@@ -65,9 +37,9 @@ void ARedoReplayDriver::AddSnapshot(void* InSnapshot)
 	FMemory::Memcpy(Dest, InSnapshot, StateSize);
 }
 
-bool ARedoReplayDriver::RewindToSnapshot(int32 InFrame, void* OutState)
+bool ARedoReplayManager::RewindToSnapshot(int32 InFrame, void* OutState)
 {
-	// TODO, add additional Assignable events when you've hit the limits of a replay.
+	// TODO, add additional assignable events when you've hit the limits of a replay.
 	if (!PlaybackData)
 	{
 		UE_LOG(LogRedo, Warning, TEXT("No playback data is present, cannot rewind."));
@@ -78,7 +50,7 @@ bool ARedoReplayDriver::RewindToSnapshot(int32 InFrame, void* OutState)
 		UE_LOG(LogRedo, Warning, TEXT("Cannot rewind to frame %d after reaching maximum replay length (frame %d)"), InFrame, LocalReplayFrame);
 		return false;
 	}
-	const int32 Max = PlaybackData->ReplayLengthInFrames - 1;
+	const int32 Max = PlaybackData->ReplayLengthInFrames - LAST_SNAPSHOT_FRAME_PADDING;
 	InFrame = FMath::Clamp(InFrame, 0, Max);
 	
 	int32 SnapshotOffset = InFrame * StateSize;
@@ -90,7 +62,7 @@ bool ARedoReplayDriver::RewindToSnapshot(int32 InFrame, void* OutState)
 	return true;
 }
 
-void ARedoReplayDriver::RecordInputs(void* InInputs)
+void ARedoReplayManager::RecordInputsForReplay(void* InInputs)
 {
 	int32 InputSize = InputSizePerPlayer * NumPlayers;
 	// Allocates the amount of space needed based on the amount of frames passed in comparison to the last time the buffer was scaled.
@@ -104,61 +76,71 @@ void ARedoReplayDriver::RecordInputs(void* InInputs)
 	FMemory::Memcpy(DataBuffer.GetData() + WriteOffset, InInputs, InputSize);
 }
 
-void ARedoReplayDriver::ReciteInputs(int32 Frame, void* OutInputs)
+void ARedoReplayManager::RetrieveInputsFromReplay(int32 Frame, void* OutInputs)
 {
 	int32 InputSize = InputSizePerPlayer * NumPlayers;
 	int32 InputOffset = Frame * InputSize;
 	FMemory::Memcpy(OutInputs, PlaybackData->Data.GetData() + InputOffset, InputSize);
 }
 
-void ARedoReplayDriver::ReciteInputs(void* Inputs)
+void ARedoReplayManager::RetrieveInputsFromReplay(void* Inputs)
 {
-	ReciteInputs(LocalReplayFrame, Inputs);
+	RetrieveInputsFromReplay(LocalReplayFrame, Inputs);
 }
 
-URedoReplaySaveData* ARedoReplayDriver::FindReplay()
+URedoReplaySaveData* ARedoReplayManager::FindReplay(FString SearchString, int32 Index)
 {
-	FString ReplayName = "REPLAY";
-	if (UGameplayStatics::DoesSaveGameExist(ReplayName, 0))
+	if (UGameplayStatics::DoesSaveGameExist(SearchString, Index))
 	{
-		return Cast<URedoReplaySaveData>(UGameplayStatics::LoadGameFromSlot(ReplayName, 0));
+		return Cast<URedoReplaySaveData>(UGameplayStatics::LoadGameFromSlot(SearchString, Index));
 	}
 	return nullptr;
 }
 
-void ARedoReplayDriver::SaveReplay()
+void ARedoReplayManager::SaveReplay()
 {
 	auto NewSave = Cast<URedoReplaySaveData>(UGameplayStatics::CreateSaveGameObject(URedoReplaySaveData::StaticClass()));
 	if (!NewSave) return;
-	
-	FString ReplayName = "REPLAY";
 		
 	NewSave->Timestamp = FDateTime::Now();
 	NewSave->ReplayLengthInFrames = LocalReplayFrame;
 		
 	NewSave->InputSizePerPlayer = InputSizePerPlayer;
 	NewSave->PlayerCount = NumPlayers;
+	// TODO: Potentially add a custom serialization to reduce the size of the data?
 	NewSave->Data = DataBuffer;
-		
+	
 	UGameplayStatics::SaveGameToSlot(NewSave, ReplayName, 0);
 }
 
-void ARedoReplayDriver::SetReplayData(URedoReplaySaveData* DataToUse)
+void ARedoReplayManager::SetReplayData(URedoReplaySaveData* DataToUse)
 {
 	PlaybackData = DataToUse;
 }
 
-void ARedoReplayDriver::SetLocalFrame(int32 NewLocalFrame)
+void ARedoReplayManager::SetLocalFrame(int32 InLocalFrame)
 {
-	LocalReplayFrame = FMath::Max(NewLocalFrame, 0);
+	const int32 Max = PlaybackData ? PlaybackData->ReplayLengthInFrames : InLocalFrame;
+	LocalReplayFrame = FMath::Clamp(InLocalFrame, 0, Max);
 }
 
-int32 ARedoReplayDriver::GetReplayLengthInFrames() const
+void ARedoReplayManager::AdvanceLocalFrame()
+{
+	SetLocalFrame(LocalReplayFrame + 1);
+}
+
+int32 ARedoReplayManager::GetReplayLengthInFrames() const
 {
 	if (PlaybackData == nullptr)
 	{
 		return 0;
 	}
 	return PlaybackData->ReplayLengthInFrames;
+}
+
+float ARedoReplayManager::GetReplayLength() const
+{
+	const int32 InFrames = GetReplayLengthInFrames();
+	return InFrames * (1.f/60);
 }
 
