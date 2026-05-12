@@ -14,11 +14,12 @@ This uses the [GekkoNetUE](https://github.com/koenjicode/GekkoNetUE) plugin for 
 
 ## Controls
 This game can be played online or locally with either a keyboard or a controller.
-- Arrow Keys | W,A,S,D | D-Pad | Analog Stick = Move paddle up and down
-- 1 = Increase local delay online
-- 2 = Decrease local delay online
+- Arrow Keys | W,A,S,D | D-Pad | Analog Stick = Move Paddle
+- Space Bar = Pause Simulation
+- 1 = Increase Online Delay
+- 2 = Decrease Online Delay
 - 3 = Pull up network stats
 - 4 = Exit Match
-- 8 = Rewind replay.
-- 9 = Fast forward replay.
-- 0 = Start/Stop replay takeover
+- 8 = Rewind Replay
+- 9 = Fast Forward Replay
+- 0 = Start/Stop Replay Takeover
