@@ -17,5 +17,8 @@ class GEKKOGAMEUE_API UGekkoBlueprintFunctionLibrary : public UBlueprintFunction
 public:
 	
 	UFUNCTION(BlueprintPure)
+	static bool IsPlayInEditor();
+	
+	UFUNCTION(BlueprintPure)
 	static int32 GetPlayInEditorID();
 };

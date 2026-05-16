@@ -15,6 +15,7 @@ public class GekkoGameUE : ModuleRules
 			"Engine",
 			"InputCore",
 			"EnhancedInput",
+			"UnrealEd",
 			"GekkoNetUE",
 			"GekkoNet",
 			"Redo",
