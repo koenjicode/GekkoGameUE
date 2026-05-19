@@ -94,10 +94,7 @@ void AGekkoGameState::ShutdownGame()
 {
 	FMemory::Memzero(&Gs, sizeof(Gs));
 	UGekkoNetSubsystem* GNS = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
-	if (GNS->IsSessionActive() && GNS->GetSessionState() != EGekkoSessionState::Exiting)
-	{
-		GNS->ShutdownGekko();
-	}
+	GNS->EndSession();
 }
 
 void AGekkoGameState::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -271,22 +268,38 @@ void AGekkoGameState::UpdateGame()
 	if (bIsOnlinePlay)
 	{
 		UGekkoNetSubsystem* GNS = GI->GetSubsystem<UGekkoNetSubsystem>();
-		if (!GNS->IsSessionActive())
+		if (!GNS->IsSessionRunning())
 		{
-			FGekkoSessionConfig SessionConfig {
+			FGekkoConfig SessionConfig {
 				2,
 				0,
-				10,
+				8,
 				0,
 				sizeof(GekkoGame::Input),
 				sizeof(GekkoGame::Gamestate::state),
 				false,
-				0};
-			GNS->SetPlayerID(GI->PlayerId);
-			GNS->SetLocalDelay(GI->LocalDelayAmount);
-			GNS->StartGekko(SessionConfig, this);
+				false, };
+			
+			GNS->SetLocalAdapter(GI->PlayerId);
+			GNS->SetSimulationHost(this);
+			GNS->StartSession(SessionConfig, GI->PlayerId == 0 ? 5000 : 5001, false);
+
+			for (int i = 0; i < 2; ++i)
+			{
+				if (i == GI->PlayerId)
+				{
+					NetLocalPlayerID = GNS->AddActor();
+				}
+				else
+				{
+					GNS->AddActor(EGekkoPlayerType::RemotePlayer, GI->PlayerId == 0 ? "127.0.0.1:5001" : "127.0.0.1:5000");
+				}
+			}
+			
+			GNS->OnPlayerDisconnected.AddUniqueDynamic(this, &AGekkoGameState::OnPlayerDisconnected);
 		}
-		GNS->UpdateGekko();
+		GNS->UpdateSession();
+		NetStats = GNS->UpdateNetworkStats(NetLocalPlayerID ^ 1);
 		return;
 	}
 	
@@ -348,7 +361,7 @@ void AGekkoGameState::AdvanceGameState(GekkoGame::Input Inputs[4], GekkoGameEven
 	}
 }
 
-void AGekkoGameState::GekkoGetLocalInputs(void* OutInputData)
+void AGekkoGameState::GekkoGetLocalInput(int32 LocalPlayer, void* OutInputData)
 {
 	GekkoGame::Input LocalInput = PollLatestInput(0);
 	FMemory::Memcpy(OutInputData, &LocalInput, sizeof(GekkoGame::Input));
@@ -368,7 +381,7 @@ void AGekkoGameState::GekkoSave(GekkoGameEvent* Event)
 	*Event->data.save.checksum = Checksum;
 }
 
-void AGekkoGameState::GekkoAdvance(GekkoGameEvent* Event, bool Render)
+void AGekkoGameState::GekkoAdvance(GekkoGameEvent* Event)
 {
 	UE_LOG(LogGekkoGame, Log, TEXT("f%d,"), Event->data.adv.frame);
 	UGekkoNetSubsystem* GNS = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
@@ -387,7 +400,7 @@ void AGekkoGameState::GekkoAdvance(GekkoGameEvent* Event, bool Render)
 	AdvanceGameState(inputs, Event);
 }
 
-void AGekkoGameState::GekkoDisconnect(GekkoSessionEvent* Event)
+void AGekkoGameState::OnPlayerDisconnected(int32 Handle)
 {
 	UGameplayStatics::OpenLevelBySoftObjectPtr(this, DisconnectLevel, true);
 }
@@ -401,7 +414,7 @@ bool AGekkoGameState::CanPause()
 {
 	UGekkoGameInstance* GI = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
 	UGekkoNetSubsystem* GNS = GI->GetSubsystem<UGekkoNetSubsystem>();
-	return !GNS->IsSessionActive();
+	return !GNS->IsSessionRunning();
 }
 
 bool AGekkoGameState::ShouldPauseGame() const

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "game.h"
 #include "GekkoNetSimulationInterface.h"
+#include "GekkoNetSubsystem.h"
 #include "Containers/RingBuffer.h"
 #include "GameFramework/GameStateBase.h"
 #include "GekkoGameState.generated.h"
@@ -59,11 +60,13 @@ public:
 	void UpdateGame();
 	void AdvanceGameState(GekkoGame::Input Inputs[], GekkoGameEvent* Event = nullptr);
 	
-	virtual void GekkoGetLocalInputs(void* OutInputData) override;
+	virtual void GekkoGetLocalInput(int32 LocalPlayer, void* OutInputData) override;
 	virtual void GekkoLoad(GekkoGameEvent* Event) override;
 	virtual void GekkoSave(GekkoGameEvent* Event) override;
-	virtual void GekkoAdvance(GekkoGameEvent* Event, bool Render) override;
-	virtual void GekkoDisconnect(GekkoSessionEvent* Event) override;
+	virtual void GekkoAdvance(GekkoGameEvent* Event) override;
+	
+	UFUNCTION()
+	virtual void OnPlayerDisconnected(int32 Handle);
 	
 	// Checks if the game is able to rewind at its current frame.
 	UFUNCTION(BlueprintCallable)
@@ -91,6 +94,11 @@ public:
 	UFUNCTION(BlueprintPure)
 	FVector GetBallPosition(int32 index) const;
 	
+	UPROPERTY(BlueprintReadOnly)
+	int32 NetLocalPlayerID;
+	UPROPERTY(BlueprintReadOnly)
+	FGekkoSimpleNetworkStats NetStats;
+	
 	TRingBuffer<GekkoGame::Input> P1InputBuffer;
 	TRingBuffer<GekkoGame::Input> P2InputBuffer;
 	
@@ -106,6 +114,7 @@ public:
 	// Whether a player has taken control of a replay.
 	UPROPERTY(BlueprintReadOnly)
 	bool bReplayTakeoverEnabled = false;
+
 private:
 	int32 ReplayTakeoverIndex = 0;
 	int32 ReplayTakeoverSnapshotFrame = 0;
