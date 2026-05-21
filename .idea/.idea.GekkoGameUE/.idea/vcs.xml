@@ -3,7 +3,7 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/Plugins/GekkoNetUE" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/Plugins/GekkoNetUE/Source/ThirdParty/GekkoNet/GekkoNet" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/Plugins/GekkoNetUE/Source/ThirdParty/GekkoNet" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/Plugins/RedoUE" vcs="Git" />
   </component>
 </project>

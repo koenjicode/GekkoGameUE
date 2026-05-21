@@ -15,11 +15,20 @@ public class GekkoGameUE : ModuleRules
 			"Engine",
 			"InputCore",
 			"EnhancedInput",
-			"UnrealEd",
 			"GekkoNetUE",
 			"GekkoNet",
 			"Redo",
 		});
+
+		if (Target.bBuildEditor == true)
+		{
+			PrivateDependencyModuleNames.AddRange(
+				new string[]
+				{
+					"UnrealEd"
+				}
+			);
+		}
 		
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 		PrivateDependencyModuleNames.Add("OnlineSubsystem");

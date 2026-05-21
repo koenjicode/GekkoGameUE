@@ -281,7 +281,9 @@ void AGekkoGameState::UpdateGame()
 				false,
 				false, };
 			GNS->SetTransportType(GekkoTransportMethod);
+#if WITH_EDITOR
 			GNS->SetLocalAdapter(GI->PlayerId);
+#endif
 			GNS->SetSimulationHost(this);
 			GNS->StartSession(SessionConfig, GI->PlayerId == 0 ? 7000 : 7001, false);
 

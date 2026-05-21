@@ -141,7 +141,9 @@ void AGekkoSliderState::UpdateOnline()
 		FSliderEndpoint LocalEndpoint = RemoteEndpoints.FindRef(PID);
 		
 		GNS->SetTransportType(EGekkoTransportType::Asio);
+#if WITH_EDITOR
 		GNS->SetLocalAdapter(PID);
+#endif
 		GNS->SetSimulationHost(this);
 		GNS->StartSession(Cfg, LocalEndpoint.Port, false);
 

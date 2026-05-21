@@ -21,4 +21,5 @@ public:
 	
 	UFUNCTION(BlueprintPure)
 	static int32 GetPlayInEditorID();
+	
 };
