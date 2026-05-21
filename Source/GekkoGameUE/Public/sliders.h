@@ -25,6 +25,14 @@ namespace SliderGame
 
 	struct State {
 		int entt_px[MAX_PLAYERS];
+		
+		void init()
+		{
+			for (int i = 0; i < MAX_PLAYERS; i++)
+			{
+				entt_px[i] = 0;
+			}
+		}
 
 		void tick(Input inputs[MAX_PLAYERS]) {
 			// move sliders

@@ -105,6 +105,9 @@ public:
 	// Gameplay class that handles collecting inputs and saving them out to a replay.
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<ARedoReplayManager> ReplayManagerClass;
+	// The transport method currently used.
+	UPROPERTY(EditDefaultsOnly)
+	EGekkoTransportType GekkoTransportMethod;
 	// Fallback level on a discconect.
 	UPROPERTY(EditDefaultsOnly)
 	TSoftObjectPtr<UWorld> DisconnectLevel;
@@ -122,6 +125,7 @@ private:
 	
 	float ElapsedTime = 0;
 	float ReplayTakeoverStartTimer = 0;
+	int32 NetworkStatsTimer = 0;
 	int32 LocalFrame = 0;
 	int32 RemoteFrame = 0;
 

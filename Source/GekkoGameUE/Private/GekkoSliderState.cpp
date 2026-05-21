@@ -7,6 +7,7 @@
 #include "Kismet/GameplayStatics.h"
 
 static constexpr float OneFrame = 1.0f / 60;
+static constexpr int32 NetworkStatsTimerMax = 60;
 
 void AGekkoSliderState::Init()
 {
@@ -14,11 +15,6 @@ void AGekkoSliderState::Init()
 	
 	if (!GI)
 		return;
-	
-	RemoteEndpoints.Add(0, {"127.0.0.1", 5000});
-	RemoteEndpoints.Add(1, {"127.0.0.1", 5001});
-	RemoteEndpoints.Add(2, {"127.0.0.1", 5002});
-	RemoteEndpoints.Add(3, {"127.0.0.1", 5003});
 	
 	if (GI->bLocalPlayEnabled)
 	{
@@ -29,6 +25,14 @@ void AGekkoSliderState::Init()
 				UGameplayStatics::CreatePlayer(GetWorld(), i , true);
 			}
 		}
+	}
+	else
+	{
+		RemoteEndpoints.Add(0, {"127.0.0.1", 5000});
+		RemoteEndpoints.Add(1, {"127.0.0.1", 5001});
+		RemoteEndpoints.Add(2, {"127.0.0.1", 5002});
+		RemoteEndpoints.Add(3, {"127.0.0.1", 5003});
+		NetworkStats.Reserve(SliderGame::MAX_PLAYERS);
 	}
 	Gs = {};
 }
@@ -53,6 +57,7 @@ void AGekkoSliderState::Shutdown()
 			UGameplayStatics::RemovePlayer(UGameplayStatics::GetPlayerController(GetWorld(), i), true);
 		}
 	}
+	NetworkStats.Empty();
 	FMemory::Memzero(&Gs, sizeof(Gs));
 }
 
@@ -106,6 +111,18 @@ void AGekkoSliderState::UpdateOnline()
 	if (GNS->IsSessionRunning())
 	{
 		GNS->UpdateSession();
+		if (NetworkStatsTimer <= 0)
+		{
+			NetworkStats.Reset();
+			for (int i = 0; i < SliderGame::MAX_PLAYERS; ++i)
+			{
+				auto NetworkStat = GNS->UpdateNetworkStats(i);
+				NetworkStats.Add(NetworkStat);
+			}
+			NetworkStatsTimer = NetworkStatsTimerMax;
+		}
+		NetworkStatsTimer -= 1;
+		NetworkStatsTimer = FMath::Max(NetworkStatsTimer, 0);
 	}
 	else
 	{
@@ -120,18 +137,19 @@ void AGekkoSliderState::UpdateOnline()
 			false,
 			0 };
 		
-		auto LocalID = GI->PlayerId;
-		FSliderEndpoint LocalEndpoint = RemoteEndpoints.FindRef(LocalID);
+		auto PID = GI->PlayerId;
+		FSliderEndpoint LocalEndpoint = RemoteEndpoints.FindRef(PID);
 		
-		GNS->SetLocalAdapter(LocalID);
+		GNS->SetTransportType(EGekkoTransportType::Asio);
+		GNS->SetLocalAdapter(PID);
 		GNS->SetSimulationHost(this);
 		GNS->StartSession(Cfg, LocalEndpoint.Port, false);
 
 		for (int i = 0; i < SliderGame::MAX_PLAYERS; ++i)
 		{
-			if (i == LocalID)
+			if (i == PID)
 			{
-				GNS->AddActor();
+				LocalPlayerID = GNS->AddActor();
 			}
 			else
 			{

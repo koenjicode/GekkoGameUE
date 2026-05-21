@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "sliders.h"
 #include "GekkoNetSimulationInterface.h"
+#include "GekkoNetTypes.h"
 #include "GameFramework/GameStateBase.h"
 #include "GekkoSliderState.generated.h"
 
@@ -63,8 +64,16 @@ public:
 	
 	UPROPERTY()
 	TMap<int32, FSliderEndpoint> RemoteEndpoints;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
+	TArray<FGekkoSimpleNetworkStats> NetworkStats;
+	UPROPERTY(VisibleInstanceOnly)
+	int32 NetworkStatsTimer = 0;
+	UPROPERTY(EditDefaultsOnly)
+	EGekkoTransportType GekkoTransportMethod;
 	UPROPERTY(EditDefaultsOnly)
 	TSoftObjectPtr<UWorld> DisconnectLevel;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
+	int32 LocalPlayerID = 0;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bPaused = false;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)

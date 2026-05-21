@@ -14,6 +14,7 @@
 
 #define MAX_UPDATES_PER_TICK 30
 #define MAX_LOCAL_DELAY_FRAMES 9
+#define MAX_NET_STATS_TIME 60
 
 
 AGekkoGameState::AGekkoGameState()
@@ -279,10 +280,10 @@ void AGekkoGameState::UpdateGame()
 				sizeof(GekkoGame::Gamestate::state),
 				false,
 				false, };
-			
+			GNS->SetTransportType(GekkoTransportMethod);
 			GNS->SetLocalAdapter(GI->PlayerId);
 			GNS->SetSimulationHost(this);
-			GNS->StartSession(SessionConfig, GI->PlayerId == 0 ? 5000 : 5001, false);
+			GNS->StartSession(SessionConfig, GI->PlayerId == 0 ? 7000 : 7001, false);
 
 			for (int i = 0; i < 2; ++i)
 			{
@@ -292,14 +293,21 @@ void AGekkoGameState::UpdateGame()
 				}
 				else
 				{
-					GNS->AddActor(EGekkoPlayerType::RemotePlayer, GI->PlayerId == 0 ? "127.0.0.1:5001" : "127.0.0.1:5000");
+					GNS->AddActor(EGekkoPlayerType::RemotePlayer, GI->PlayerId == 0 ? "127.0.0.1:7001" : "127.0.0.1:7000");
 				}
 			}
 			
 			GNS->OnPlayerDisconnected.AddUniqueDynamic(this, &AGekkoGameState::OnPlayerDisconnected);
 		}
 		GNS->UpdateSession();
-		NetStats = GNS->UpdateNetworkStats(NetLocalPlayerID ^ 1);
+		if (NetworkStatsTimer <= 0)
+		{
+			NetStats = GNS->UpdateNetworkStats(NetLocalPlayerID ^ 1);
+			NetworkStatsTimer = MAX_NET_STATS_TIME;
+		}
+		
+		NetworkStatsTimer -= 1;
+		NetworkStatsTimer = FMath::Max(NetworkStatsTimer, 0);
 		return;
 	}
 	
