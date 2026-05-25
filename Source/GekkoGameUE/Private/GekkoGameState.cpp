@@ -25,17 +25,19 @@ AGekkoGameState::AGekkoGameState()
 	ReplayManagerClass = ARedoReplayManager::StaticClass();
 }
 
+bool AGekkoGameState::IsRecordingAllowed() const
+{
+	UGekkoGameInstance* GI = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
+	if (!GI)
+	{
+		return false;
+	}
+	return GI->bLocalPlayEnabled && GI->bAllowRecording || GI->bPlaybackLastSave;
+}
+
 void AGekkoGameState::BeginPlay()
 {
 	Super::BeginPlay();
-	UGekkoGameInstance* GI = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
-	if (GI)
-	{
-		if (GI->bLocalPlayEnabled || GI->bPlaybackLastSave)
-		{
-			ReplayManager = GetWorld()->SpawnActor<ARedoReplayManager>(ReplayManagerClass);
-		}
-	}
 	Init();
 }
 
@@ -43,8 +45,15 @@ void AGekkoGameState::Init()
 {
 	UGekkoGameInstance* GI = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
 	int32 num_players = 2;
-	// make a additional player controller than can accept inputs
-	if (GI->bLocalPlayEnabled)
+	
+	bool bLocalPlay = GI->bLocalPlayEnabled;
+	
+	if (IsRecordingAllowed())
+	{
+		ReplayManager = GetWorld()->SpawnActor<ARedoReplayManager>(ReplayManagerClass);
+	}
+	
+	if (bLocalPlay)
 	{
 		for (int i = 0; i < num_players; ++i)
 		{
@@ -54,9 +63,12 @@ void AGekkoGameState::Init()
 			}
 		}
 	}
+	
 	P1InputBuffer.Reserve(MAX_LOCAL_DELAY_FRAMES);
 	P2InputBuffer.Reserve(MAX_LOCAL_DELAY_FRAMES);
+	
 	Gs.Init(num_players);
+	
 	if (ReplayManager)
 	{
 		bool bReplayFound = false;
@@ -108,7 +120,7 @@ void AGekkoGameState::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	}
 }
 
-void AGekkoGameState::HandleTime()
+void AGekkoGameState::HandleMatchTimers()
 {
 	if (ReplayTakeoverStartTimer > 0)
 	{
@@ -119,7 +131,6 @@ void AGekkoGameState::HandleTime()
 			UE_LOG(LogGekkoGame, Log, TEXT("Replay takeover started!"));
 		}
 	}
-	ElapsedTime -= ONE_FRAME;
 }
 
 void AGekkoGameState::Tick(float DeltaSeconds)
@@ -128,14 +139,109 @@ void AGekkoGameState::Tick(float DeltaSeconds)
 	ElapsedTime += DeltaSeconds;
 	while (ElapsedTime >= ONE_FRAME)
 	{
-		//while elapsed time is greater than one frame...
-		if (!ShouldPauseGame())
+		if (bMatchStarted)
 		{
-			UpdateGame();
+			if (!ShouldPauseGame())
+			{
+				UpdateGame();
+			}
+			HandleMatchTimers();
 		}
-		HandleTime();
+		else
+		{
+			if (CanStartMatch())
+			{
+				StartMatch();
+				bMatchStarted = true;
+			}
+		}
+		ElapsedTime -= ONE_FRAME;
 	}
 	OnUnrealDraw();
+}
+
+bool AGekkoGameState::CanStartMatch() const
+{
+	UGekkoGameInstance* GI = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
+	bool bIsOnline = !GI->bLocalPlayEnabled;
+	
+	if (!GI)
+		return false;
+
+	// If we're playing locally, we just start the match.
+	if (!bIsOnline)
+	{
+		return true;
+	}
+	
+	// If we're playing lan we allow players to just start the match.
+	if (GI->bLanMode)
+	{
+		return true;
+	}
+	
+	if (!HostAddress.IsEmpty() && !ClientAddress.IsEmpty())
+	{
+		return true;
+	}
+
+	return false;
+}
+
+void AGekkoGameState::StartMatch()
+{
+	UGekkoGameInstance* GI = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
+	bool bIsOnlinePlay = !GI->bLocalPlayEnabled;
+	UGekkoNetSubsystem* GNS = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
+	
+	if (bIsOnlinePlay)
+	{
+		FGekkoConfig SessionConfig {
+			2,
+			0,
+			8,
+			0,
+			sizeof(GekkoGame::Input),
+			sizeof(GekkoGame::Gamestate::state),
+			false,
+			false, };
+		GNS->SetTransportType(GekkoTransportMethod);
+#if WITH_EDITOR
+		GNS->SetLocalAdapter(GI->PlayerId);
+#endif
+		GNS->SetSimulationHost(this);
+		
+		if (GekkoTransportMethod != EGekkoTransportType::Steam)
+		{
+			const int32 LocalPort = GI->PlayerId == 0 ? 7000 : 7001;
+			GNS->SetLocalPort(LocalPort);
+		}
+		
+		GNS->StartSession(SessionConfig, false);
+
+		for (int i = 0; i < 2; ++i)
+		{
+			if (i == GI->PlayerId)
+			{
+				NetLocalPlayerID = GNS->AddActor();
+			}
+			else
+			{
+				FString NetAddress;
+				if (GekkoTransportMethod != EGekkoTransportType::Steam)
+				{
+					NetAddress = GI->PlayerId == 0 ? "127.0.0.1:7001" : "127.0.0.1:7000";
+				}
+				else
+				{
+					NetAddress = ClientAddress;
+				}
+				GNS->AddActor(EGekkoPlayerType::RemotePlayer, NetAddress);
+			}
+		}
+			
+		GNS->OnPlayerDisconnected.AddUniqueDynamic(this, &AGekkoGameState::OnPlayerDisconnected);
+	}
 }
 
 void AGekkoGameState::RewindToSnapshot(int32 InFrame)
@@ -254,7 +360,7 @@ GekkoGame::Input AGekkoGameState::PollInput(int32 PlayerIndex) const
 	{
 		return PollLatestInput(PlayerIndex);
 	}
-	const int32 i = FMath::Max(MAX_LOCAL_DELAY_FRAMES - LocalDelay);
+	const int32 i = FMath::Max(0, MAX_LOCAL_DELAY_FRAMES - LocalDelay);
 	return InputBuffer.IsValidIndex(i) ? InputBuffer[i] : GekkoGame::Input();
 }
 
@@ -269,38 +375,7 @@ void AGekkoGameState::UpdateGame()
 	if (bIsOnlinePlay)
 	{
 		UGekkoNetSubsystem* GNS = GI->GetSubsystem<UGekkoNetSubsystem>();
-		if (!GNS->IsSessionRunning())
-		{
-			FGekkoConfig SessionConfig {
-				2,
-				0,
-				8,
-				0,
-				sizeof(GekkoGame::Input),
-				sizeof(GekkoGame::Gamestate::state),
-				false,
-				false, };
-			GNS->SetTransportType(GekkoTransportMethod);
-#if WITH_EDITOR
-			GNS->SetLocalAdapter(GI->PlayerId);
-#endif
-			GNS->SetSimulationHost(this);
-			GNS->StartSession(SessionConfig, GI->PlayerId == 0 ? 7000 : 7001, false);
-
-			for (int i = 0; i < 2; ++i)
-			{
-				if (i == GI->PlayerId)
-				{
-					NetLocalPlayerID = GNS->AddActor();
-				}
-				else
-				{
-					GNS->AddActor(EGekkoPlayerType::RemotePlayer, GI->PlayerId == 0 ? "127.0.0.1:7001" : "127.0.0.1:7000");
-				}
-			}
-			
-			GNS->OnPlayerDisconnected.AddUniqueDynamic(this, &AGekkoGameState::OnPlayerDisconnected);
-		}
+		
 		GNS->UpdateSession();
 		if (NetworkStatsTimer <= 0)
 		{

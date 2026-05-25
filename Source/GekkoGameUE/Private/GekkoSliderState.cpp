@@ -145,7 +145,7 @@ void AGekkoSliderState::UpdateOnline()
 		GNS->SetLocalAdapter(PID);
 #endif
 		GNS->SetSimulationHost(this);
-		GNS->StartSession(Cfg, LocalEndpoint.Port, false);
+		GNS->StartSession(Cfg, false);
 
 		for (int i = 0; i < SliderGame::MAX_PLAYERS; ++i)
 		{

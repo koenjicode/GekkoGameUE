@@ -2,6 +2,7 @@
 
 
 #include "GekkoBlueprintFunctionLibrary.h"
+#include "Online.h"
 
 
 bool UGekkoBlueprintFunctionLibrary::IsPlayInEditor()
@@ -24,5 +25,23 @@ int32 UGekkoBlueprintFunctionLibrary::GetPlayInEditorID()
 	}
 #endif
 	return 0;
+}
+
+FString UGekkoBlueprintFunctionLibrary::GetUniquePlayerIDAsString(int32 PlayerIndex)
+{
+	IOnlineIdentityPtr Identity = Online::GetIdentityInterface();
+
+	if (Identity.IsValid())
+	{
+		TSharedPtr<const FUniqueNetId> NetId = Identity->GetUniquePlayerId(PlayerIndex);
+
+		if (NetId.IsValid())
+		{
+			FString IdString = NetId->ToString();
+			return IdString;
+		}
+	}
+	
+	return FString();
 }
 

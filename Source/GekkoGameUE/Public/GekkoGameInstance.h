@@ -16,6 +16,8 @@ class GEKKOGAMEUE_API UGekkoGameInstance : public UGameInstance
 	public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bLanMode = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bLocalPlayEnabled = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bAllowRecording = true;

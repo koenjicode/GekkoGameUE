@@ -18,4 +18,7 @@ public:
 	
 	AGekkoGameMode();
 	
+	protected:
+	
+	virtual void OnPostLogin(AController* NewPlayer) override;
 };

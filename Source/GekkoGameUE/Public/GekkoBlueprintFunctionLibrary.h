@@ -22,4 +22,6 @@ public:
 	UFUNCTION(BlueprintPure)
 	static int32 GetPlayInEditorID();
 	
+	UFUNCTION(BlueprintPure)
+	static FString GetUniquePlayerIDAsString(int32 PlayerIndex);
 };

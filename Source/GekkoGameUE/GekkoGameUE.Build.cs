@@ -18,6 +18,9 @@ public class GekkoGameUE : ModuleRules
 			"GekkoNetUE",
 			"GekkoNet",
 			"Redo",
+			"OnlineSubsystem",
+			"OnlineSubsystemUtils",
+			"CoreOnline"
 		});
 
 		if (Target.bBuildEditor == true)

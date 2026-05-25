@@ -21,17 +21,21 @@ class GEKKOGAMEUE_API AGekkoGameState : public AGameStateBase, public IGekkoNetS
 	
 public:
 	AGekkoGameState();
-	
+	bool IsRecordingAllowed() const;
+
 	void Init();
 	virtual void BeginPlay() override;
 	
 	void ShutdownGame();
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-	void HandleTime();
+	void HandleMatchTimers();
 
 	virtual void Tick(float DeltaSeconds) override;
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnUnrealDraw();
+
+	bool CanStartMatch() const;
+	void StartMatch();
 	
 	// Rewind/Fast Forward to a collected snapshot.
 	UFUNCTION(BlueprintCallable)
@@ -102,6 +106,9 @@ public:
 	TRingBuffer<GekkoGame::Input> P1InputBuffer;
 	TRingBuffer<GekkoGame::Input> P2InputBuffer;
 	
+	FString HostAddress;
+	FString ClientAddress;
+	
 	// Gameplay class that handles collecting inputs and saving them out to a replay.
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<ARedoReplayManager> ReplayManagerClass;
@@ -119,14 +126,24 @@ public:
 	bool bReplayTakeoverEnabled = false;
 
 private:
-	int32 ReplayTakeoverIndex = 0;
-	int32 ReplayTakeoverSnapshotFrame = 0;
 	GekkoGame::Gamestate Gs = {};
 	
+	UPROPERTY(VisibleInstanceOnly)
+	bool bMatchStarted = false;
+	UPROPERTY(VisibleInstanceOnly)
+	int32 ReplayTakeoverIndex = 0;
+	UPROPERTY(VisibleInstanceOnly)
+	int32 ReplayTakeoverSnapshotFrame = 0;
+	
+	UPROPERTY(VisibleInstanceOnly)
 	float ElapsedTime = 0;
+	UPROPERTY(VisibleInstanceOnly)
 	float ReplayTakeoverStartTimer = 0;
+	UPROPERTY(VisibleInstanceOnly)
 	int32 NetworkStatsTimer = 0;
+	UPROPERTY(VisibleInstanceOnly)
 	int32 LocalFrame = 0;
+	UPROPERTY(VisibleInstanceOnly)
 	int32 RemoteFrame = 0;
 
 	UPROPERTY()
