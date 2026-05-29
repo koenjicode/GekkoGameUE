@@ -17,8 +17,4 @@ class GEKKOGAMEUE_API AGekkoGameMode : public AGameModeBase
 public:
 	
 	AGekkoGameMode();
-	
-	protected:
-	
-	virtual void OnPostLogin(AController* NewPlayer) override;
 };

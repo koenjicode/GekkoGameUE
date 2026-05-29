@@ -15,7 +15,6 @@ class GEKKOGAMEUE_API UGekkoBlueprintFunctionLibrary : public UBlueprintFunction
 	GENERATED_BODY()
 	
 public:
-	
 	UFUNCTION(BlueprintPure)
 	static bool IsPlayInEditor();
 	

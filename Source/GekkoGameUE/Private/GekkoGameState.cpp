@@ -7,6 +7,7 @@
 #include "GekkoNetSubsystem.h"
 #include "RedoReplayManager.h"
 #include "RedoReplaySaveData.h"
+#include "GameFramework/PlayerState.h"
 #include "Kismet/GameplayStatics.h"
 
 #define TARGET_FRAMERATE 60
@@ -43,6 +44,7 @@ void AGekkoGameState::BeginPlay()
 
 void AGekkoGameState::Init()
 {
+	ClientStartTime = ClientStartMaxTime;
 	UGekkoGameInstance* GI = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
 	int32 num_players = 2;
 	
@@ -105,19 +107,23 @@ void AGekkoGameState::Init()
 
 void AGekkoGameState::ShutdownGame()
 {
+	if (ReplayManager && ReplayManager->GetManagerBehaviour() == ERedoReplayMode::Recording)
+	{
+		ReplayManager->SaveReplay();
+	}
+	
 	FMemory::Memzero(&Gs, sizeof(Gs));
 	UGekkoNetSubsystem* GNS = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
-	GNS->EndSession();
+	if (GNS && GNS->IsSessionRunning())
+	{
+		GNS->EndSession();
+	}
 }
 
 void AGekkoGameState::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	Super::EndPlay(EndPlayReason);
 	ShutdownGame();
-	if (ReplayManager && ReplayManager->GetManagerBehaviour() == ERedoReplayMode::Recording)
-	{
-		ReplayManager->SaveReplay();
-	}
 }
 
 void AGekkoGameState::HandleMatchTimers()
@@ -154,6 +160,10 @@ void AGekkoGameState::Tick(float DeltaSeconds)
 				StartMatch();
 				bMatchStarted = true;
 			}
+			else
+			{
+				ClientStartTime -= ONE_FRAME;
+			}
 		}
 		ElapsedTime -= ONE_FRAME;
 	}
@@ -180,67 +190,112 @@ bool AGekkoGameState::CanStartMatch() const
 		return true;
 	}
 	
-	if (!HostAddress.IsEmpty() && !ClientAddress.IsEmpty())
+	// If two players are registered in the Player Array for online play, that's when we'll start our match.
+	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	if (PlayerArray.Num() == 2 && PC->PlayerState != nullptr)
 	{
+		/**
+		if (ClientStartTime <= 0)
+		{
+			FMath::Max(0, ClientStartTime);
+			return true;
+		}
+		*/
 		return true;
 	}
-
 	return false;
+}
+
+void AGekkoGameState::StartOnlineMatch()
+{
+	int32 PlayerID = -1;
+	if (PlayerArray.Num() == 2)
+	{
+		int32 LocalID = GetWorld()->GetFirstPlayerController()->PlayerState->GetPlayerId();
+		for (int i = 0; i < PlayerArray.Num(); ++i)
+		{
+			if (LocalID == PlayerArray[i]->GetPlayerId())
+			{
+				PlayerID = i;
+			}
+		}
+		
+		UE_LOG(LogGekkoGame, Log, TEXT("Local ID: %d, Opponent ID: %d"), LocalID, PlayerArray[PlayerID ^ 1]->GetPlayerId());
+	}
+	else
+	{
+		UGekkoGameInstance* GI = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
+		PlayerID = GI->PlayerId;
+	}
+
+	if (PlayerID < 0)
+		return;
+
+	UGekkoNetSubsystem* GNS = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
+
+	EGekkoTransportType TransportMethod = GekkoTransportMethod;
+#if WITH_EDITOR
+	TransportMethod = EGekkoTransportType::Unreal;
+#endif
+	
+	
+	FGekkoConfig SessionConfig {
+		2,
+		0,
+		8,
+		0,
+		sizeof(GekkoGame::Input),
+		sizeof(GekkoGame::Gamestate::state),
+		false,
+		false, };
+	GNS->SetTransportType(TransportMethod);
+#if WITH_EDITOR
+	GNS->SetLocalAdapter(PlayerID);
+#endif
+	GNS->SetSimulationHost(this);
+		
+	if (TransportMethod != EGekkoTransportType::Steam)
+	{
+		const int32 LocalPort = PlayerID == 0 ? 7000 : 7001;
+		GNS->SetLocalPort(LocalPort);
+	}
+		
+	GNS->StartSession(SessionConfig, false);
+
+	for (int i = 0; i < 2; ++i)
+	{
+		if (i == PlayerID)
+		{
+			NetLocalPlayerID = GNS->AddActor();
+		}
+		else
+		{
+			FString NetAddress;
+			if (TransportMethod != EGekkoTransportType::Steam)
+			{
+				NetAddress = PlayerID == 0 ? "127.0.0.1:7001" : "127.0.0.1:7000";
+			}
+			else
+			{
+				// Player Array 0
+				APlayerState* PlayerState = PlayerArray[PlayerID ^ 1];
+				NetAddress = PlayerState->GetUniqueId().ToString();
+			}
+			GNS->AddActor(EGekkoPlayerType::RemotePlayer, NetAddress);
+		}
+	}
+	GNS->OnPlayerDisconnected.AddUniqueDynamic(this, &AGekkoGameState::PlayerDisconnected);
 }
 
 void AGekkoGameState::StartMatch()
 {
 	UGekkoGameInstance* GI = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
-	bool bIsOnlinePlay = !GI->bLocalPlayEnabled;
-	UGekkoNetSubsystem* GNS = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
-	
-	if (bIsOnlinePlay)
-	{
-		FGekkoConfig SessionConfig {
-			2,
-			0,
-			8,
-			0,
-			sizeof(GekkoGame::Input),
-			sizeof(GekkoGame::Gamestate::state),
-			false,
-			false, };
-		GNS->SetTransportType(GekkoTransportMethod);
-#if WITH_EDITOR
-		GNS->SetLocalAdapter(GI->PlayerId);
-#endif
-		GNS->SetSimulationHost(this);
-		
-		if (GekkoTransportMethod != EGekkoTransportType::Steam)
-		{
-			const int32 LocalPort = GI->PlayerId == 0 ? 7000 : 7001;
-			GNS->SetLocalPort(LocalPort);
-		}
-		
-		GNS->StartSession(SessionConfig, false);
+	if (!GI)
+		return;
 
-		for (int i = 0; i < 2; ++i)
-		{
-			if (i == GI->PlayerId)
-			{
-				NetLocalPlayerID = GNS->AddActor();
-			}
-			else
-			{
-				FString NetAddress;
-				if (GekkoTransportMethod != EGekkoTransportType::Steam)
-				{
-					NetAddress = GI->PlayerId == 0 ? "127.0.0.1:7001" : "127.0.0.1:7000";
-				}
-				else
-				{
-					NetAddress = ClientAddress;
-				}
-				GNS->AddActor(EGekkoPlayerType::RemotePlayer, NetAddress);
-			}
-		}
-			
-		GNS->OnPlayerDisconnected.AddUniqueDynamic(this, &AGekkoGameState::OnPlayerDisconnected);
+	if (!GI->bLocalPlayEnabled)
+	{
+		StartOnlineMatch();
 	}
 }
 
@@ -468,13 +523,13 @@ void AGekkoGameState::GekkoSave(GekkoGameEvent* Event)
 
 void AGekkoGameState::GekkoAdvance(GekkoGameEvent* Event)
 {
-	UE_LOG(LogGekkoGame, Log, TEXT("f%d,"), Event->data.adv.frame);
+	UE_LOG(LogGekkoGame, Verbose, TEXT("f%d,"), Event->data.adv.frame);
 	UGekkoNetSubsystem* GNS = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
 	GekkoGame::Input inputs[GekkoGame::MAX_PLAYERS] = {};
 	for (int j = 0; j < GNS->GetNumOfPlayers(); j++) 
 	{
 		inputs[j] = ((GekkoGame::Input*)(Event->data.adv.inputs))[j];
-		UE_LOG(LogGekkoGame, Log, TEXT(" p%d %d%d%d%d"), 
+		UE_LOG(LogGekkoGame, VeryVerbose, TEXT(" p%d %d%d%d%d"), 
 			   j, 
 			   inputs[j].left, 
 			   inputs[j].right, 
@@ -483,11 +538,6 @@ void AGekkoGameState::GekkoAdvance(GekkoGameEvent* Event)
 	}
 	RemoteFrame = Event->data.adv.frame;
 	AdvanceGameState(inputs, Event);
-}
-
-void AGekkoGameState::OnPlayerDisconnected(int32 Handle)
-{
-	UGameplayStatics::OpenLevelBySoftObjectPtr(this, DisconnectLevel, true);
 }
 
 bool AGekkoGameState::CanRewind()
@@ -544,3 +594,5 @@ FVector AGekkoGameState::GetBallPosition(int32 index) const
 	
 	return pos;
 }
+
+

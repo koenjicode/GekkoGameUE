@@ -4,7 +4,6 @@
 #include "GekkoBlueprintFunctionLibrary.h"
 #include "Online.h"
 
-
 bool UGekkoBlueprintFunctionLibrary::IsPlayInEditor()
 {
 #if WITH_EDITOR

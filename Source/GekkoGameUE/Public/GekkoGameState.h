@@ -35,6 +35,7 @@ public:
 	void OnUnrealDraw();
 
 	bool CanStartMatch() const;
+	void StartOnlineMatch();
 	void StartMatch();
 	
 	// Rewind/Fast Forward to a collected snapshot.
@@ -69,8 +70,8 @@ public:
 	virtual void GekkoSave(GekkoGameEvent* Event) override;
 	virtual void GekkoAdvance(GekkoGameEvent* Event) override;
 	
-	UFUNCTION()
-	virtual void OnPlayerDisconnected(int32 Handle);
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
+	void PlayerDisconnected(int32 Handle);
 	
 	// Checks if the game is able to rewind at its current frame.
 	UFUNCTION(BlueprintCallable)
@@ -106,9 +107,6 @@ public:
 	TRingBuffer<GekkoGame::Input> P1InputBuffer;
 	TRingBuffer<GekkoGame::Input> P2InputBuffer;
 	
-	FString HostAddress;
-	FString ClientAddress;
-	
 	// Gameplay class that handles collecting inputs and saving them out to a replay.
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<ARedoReplayManager> ReplayManagerClass;
@@ -124,6 +122,11 @@ public:
 	// Whether a player has taken control of a replay.
 	UPROPERTY(BlueprintReadOnly)
 	bool bReplayTakeoverEnabled = false;
+	
+	UPROPERTY(EditDefaultsOnly)
+	float ClientStartMaxTime = 1.5f;
+	UPROPERTY()
+	float ClientStartTime;
 
 private:
 	GekkoGame::Gamestate Gs = {};
