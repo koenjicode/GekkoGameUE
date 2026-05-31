@@ -254,7 +254,9 @@ void AGekkoGameState::StartOnlineMatch()
 {
 	UGekkoNetSubsystem* GekkoNet = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
 	
-	if (!GekkoNet)
+	UGekkoGameInstance* GI = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
+	
+	if (!GekkoNet || !GI)
 		return;
 	
 	int32 PlayerID;
@@ -264,11 +266,15 @@ void AGekkoGameState::StartOnlineMatch()
 	}
 	else
 	{
-		UGekkoGameInstance* GI = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
 		PlayerID = GI->PlayerId;
 	}
 	
 	GekkoNet->SetSimulationHost(this);
+
+	if (GI->bUsingAsio)
+	{
+		GekkoNet->bUseAsioTransport = true;
+	}
 	
 	FGekkoConfig SessionConfig 
 	{
@@ -279,7 +285,7 @@ void AGekkoGameState::StartOnlineMatch()
 		sizeof(GekkoGame::Input),
 		sizeof(GekkoGame::Gamestate::state),
 		false,
-		false, 
+		true, 
 	};
 	
 	if (GetOnlineSubsystemName() == "NULL" || !IsListenConnectedMatch())
@@ -523,10 +529,6 @@ void AGekkoGameState::AdvanceGameState(GekkoGame::Input Inputs[4], GekkoGameEven
 	}
 	Gs.Update(Inputs);
 	++LocalFrame;
-	if (Event != nullptr)
-	{
-		++RemoteFrame;
-	}
 	if (ReplayManager)
 	{
 		ReplayManager->AdvanceLocalFrame();

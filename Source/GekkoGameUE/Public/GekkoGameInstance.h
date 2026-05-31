@@ -29,6 +29,9 @@ class GEKKOGAMEUE_API UGekkoGameInstance : public UAdvancedFriendsGameInstance
 	// Whether matches will use Direct Connections or match via Unreal's Online Subsystem.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bLanMode = false;
+	// Is using Asio Transport or not.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bUsingAsio = false;
 	// The amount of delay used as a baseline in the match, this value can be used offline to implement an artificial amount of delay.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 LocalDelayAmount = 1;
