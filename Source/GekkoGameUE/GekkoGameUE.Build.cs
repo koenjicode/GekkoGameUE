@@ -20,7 +20,8 @@ public class GekkoGameUE : ModuleRules
 			"Redo",
 			"OnlineSubsystem",
 			"OnlineSubsystemUtils",
-			"CoreOnline"
+			"CoreOnline",
+			"AdvancedSessions"
 		});
 
 		if (Target.bBuildEditor == true)
