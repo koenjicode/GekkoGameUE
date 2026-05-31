@@ -35,6 +35,10 @@ public:
 	void OnUnrealDraw();
 
 	bool CanStartMatch() const;
+	FName GetOnlineSubsystemName() const;
+	bool IsListenConnectedMatch() const;
+	int32 GetPlayerID();
+	int32 GetOpponentID();
 	void StartOnlineMatch();
 	void StartMatch();
 	
@@ -131,6 +135,8 @@ public:
 private:
 	GekkoGame::Gamestate Gs = {};
 	
+	UPROPERTY()
+	TArray<FGekkoEndpoint> NullEndpoints;
 	UPROPERTY(VisibleInstanceOnly)
 	bool bMatchStarted = false;
 	UPROPERTY(VisibleInstanceOnly)

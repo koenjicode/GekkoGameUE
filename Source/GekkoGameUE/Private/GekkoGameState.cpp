@@ -65,6 +65,11 @@ void AGekkoGameState::Init()
 			}
 		}
 	}
+	else
+	{
+		NullEndpoints.Add({"127.0.0.1", 9000});
+		NullEndpoints.Add({"127.0.0.1", 9001});
+	}
 	
 	P1InputBuffer.Reserve(MAX_LOCAL_DELAY_FRAMES);
 	P2InputBuffer.Reserve(MAX_LOCAL_DELAY_FRAMES);
@@ -163,6 +168,7 @@ void AGekkoGameState::Tick(float DeltaSeconds)
 			else
 			{
 				ClientStartTime -= ONE_FRAME;
+				FMath::Max(0, ClientStartTime);
 			}
 		}
 		ElapsedTime -= ONE_FRAME;
@@ -194,52 +200,78 @@ bool AGekkoGameState::CanStartMatch() const
 	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
 	if (PlayerArray.Num() == 2 && PC->PlayerState != nullptr)
 	{
-		/**
 		if (ClientStartTime <= 0)
 		{
-			FMath::Max(0, ClientStartTime);
 			return true;
 		}
-		*/
-		return true;
 	}
 	return false;
 }
 
+FName AGekkoGameState::GetOnlineSubsystemName() const
+{
+	return Online::GetSubsystem(GetWorld())->GetSubsystemName();
+}
+
+bool AGekkoGameState::IsListenConnectedMatch() const
+{
+	return PlayerArray.Num() == 2;
+}
+
+int32 AGekkoGameState::GetPlayerID()
+{
+	if (PlayerArray.Num() != 2)
+	{
+		return -1;
+	}
+	
+	int32 PlayerID = INDEX_NONE;
+	const int32 LocalID = GetWorld()->GetFirstPlayerController()->PlayerState->GetPlayerId();
+	
+	for (int i = 0; i < PlayerArray.Num(); ++i)
+	{
+		if (LocalID == PlayerArray[i]->GetPlayerId())
+		{
+			PlayerID = i;
+			break;
+		}
+	}
+	
+	return PlayerID;
+}
+
+int32 AGekkoGameState::GetOpponentID()
+{
+	if (PlayerArray.Num() != 2)
+	{
+		return -1;
+	}
+	
+	return GetPlayerID() ^ 1;
+}
+
 void AGekkoGameState::StartOnlineMatch()
 {
-	int32 PlayerID = -1;
-	if (PlayerArray.Num() == 2)
+	UGekkoNetSubsystem* GekkoNet = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
+	
+	if (!GekkoNet)
+		return;
+	
+	int32 PlayerID;
+	if (IsListenConnectedMatch())
 	{
-		int32 LocalID = GetWorld()->GetFirstPlayerController()->PlayerState->GetPlayerId();
-		for (int i = 0; i < PlayerArray.Num(); ++i)
-		{
-			if (LocalID == PlayerArray[i]->GetPlayerId())
-			{
-				PlayerID = i;
-			}
-		}
-		
-		UE_LOG(LogGekkoGame, Log, TEXT("Local ID: %d, Opponent ID: %d"), LocalID, PlayerArray[PlayerID ^ 1]->GetPlayerId());
+		PlayerID = GetPlayerID();
 	}
 	else
 	{
 		UGekkoGameInstance* GI = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
 		PlayerID = GI->PlayerId;
 	}
-
-	if (PlayerID < 0)
-		return;
-
-	UGekkoNetSubsystem* GNS = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
-
-	EGekkoTransportType TransportMethod = GekkoTransportMethod;
-#if WITH_EDITOR
-	TransportMethod = EGekkoTransportType::Unreal;
-#endif
 	
+	GekkoNet->SetSimulationHost(this);
 	
-	FGekkoConfig SessionConfig {
+	FGekkoConfig SessionConfig 
+	{
 		2,
 		0,
 		8,
@@ -247,44 +279,44 @@ void AGekkoGameState::StartOnlineMatch()
 		sizeof(GekkoGame::Input),
 		sizeof(GekkoGame::Gamestate::state),
 		false,
-		false, };
-	GNS->SetTransportType(TransportMethod);
-#if WITH_EDITOR
-	GNS->SetLocalAdapter(PlayerID);
-#endif
-	GNS->SetSimulationHost(this);
-		
-	if (TransportMethod != EGekkoTransportType::Steam)
+		false, 
+	};
+	
+	if (GetOnlineSubsystemName() == "NULL" || !IsListenConnectedMatch())
 	{
-		const int32 LocalPort = PlayerID == 0 ? 7000 : 7001;
-		GNS->SetLocalPort(LocalPort);
+		GekkoNet->SetLocalEndpoint(NullEndpoints[PlayerID].ToString());
+	}
+	else
+	{
+		GekkoNet->SetLocalAddress(PlayerArray[PlayerID]->GetUniqueId().ToString());
 	}
 		
-	GNS->StartSession(SessionConfig, false);
+	GekkoNet->StartSession(SessionConfig, false);
 
 	for (int i = 0; i < 2; ++i)
 	{
 		if (i == PlayerID)
 		{
-			NetLocalPlayerID = GNS->AddActor();
+			NetLocalPlayerID = GekkoNet->AddActor();
 		}
 		else
 		{
-			FString NetAddress;
-			if (TransportMethod != EGekkoTransportType::Steam)
+			FString OpponentAddress;
+			if (GetOnlineSubsystemName() == "NULL" || !IsListenConnectedMatch())
 			{
-				NetAddress = PlayerID == 0 ? "127.0.0.1:7001" : "127.0.0.1:7000";
+				OpponentAddress = NullEndpoints[i].ToString();
 			}
 			else
 			{
-				// Player Array 0
-				APlayerState* PlayerState = PlayerArray[PlayerID ^ 1];
-				NetAddress = PlayerState->GetUniqueId().ToString();
+				OpponentAddress = PlayerArray[i]->GetUniqueId().ToString();
 			}
-			GNS->AddActor(EGekkoPlayerType::RemotePlayer, NetAddress);
+			GekkoNet->AddActor(EGekkoPlayerType::RemotePlayer, OpponentAddress);
 		}
 	}
-	GNS->OnPlayerDisconnected.AddUniqueDynamic(this, &AGekkoGameState::PlayerDisconnected);
+	
+	GekkoNet->OnPlayerDisconnected.AddUniqueDynamic(this, &AGekkoGameState::PlayerDisconnected);
+	
+	UE_LOG(LogGekkoGame, Log, TEXT("Started match as Player %d"), PlayerID);
 }
 
 void AGekkoGameState::StartMatch()
