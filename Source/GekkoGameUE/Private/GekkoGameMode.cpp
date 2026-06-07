@@ -2,12 +2,111 @@
 
 
 #include "GekkoGameMode.h"
-
+#include "GekkoGameInstance.h"
+#include "GekkoGameLog.h"
 #include "GekkoGameState.h"
-#include "GameFramework/PlayerState.h"
+#include "GekkoPlayerController.h"
+#include "Kismet/GameplayStatics.h"
 
 AGekkoGameMode::AGekkoGameMode()
 {
 	DefaultPawnClass = nullptr;
 	GameStateClass = AGekkoGameState::StaticClass();
+	
+	SetActorTickInterval(1.f);
+}
+
+void AGekkoGameMode::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	GekkoGameInstance = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
+	GekkoGameState = Cast<AGekkoGameState>(GetWorld()->GetGameState());
+}
+
+bool AGekkoGameMode::IsLocalPlay() const
+{
+	return GetNetMode() == NM_Standalone;
+}
+
+void AGekkoGameMode::ReadyPlayer(int32 PlayerId)
+{
+	PlayersReady.Add(PlayerId);
+}
+
+int32 AGekkoGameMode::GetNumPlayers()
+{
+	return PlayersReady.Num();
+}
+
+bool AGekkoGameMode::CanStartMatch()
+{
+	// Don't even bother to start if these are not valid.
+	if (!GekkoGameInstance || !GekkoGameState)
+	{
+		return false;
+	}
+	
+	// The match has already started, so we don't need to start it again.
+	if (GekkoGameState->bMatchStarted)
+	{
+		return false;
+	}
+	
+	// If we're running the game Locally or for direct connections, this should be true.
+	if (IsLocalPlay())
+	{
+		UE_LOG(LogGekkoGame, Log, TEXT("Starting a Local Play match."));
+		return true;
+	}
+	
+	// If we're running as a server, we're not going to do anything, maybe try and get this to work later?
+	if (GetNetMode() == NM_DedicatedServer)
+	{
+		return false;
+	}
+	
+	// If two players are connected in the lobby, we can start the match.
+	if (GetNumPlayers() == 2)
+	{
+		UE_LOG(LogGekkoGame, Log, TEXT("Starting a networked match via RPC."));
+		return true;
+	}
+	
+	return false;
+}
+
+void AGekkoGameMode::StartMatch()
+{
+	if (!CanStartMatch())
+	{
+		return;
+	}
+	
+	if (IsLocalPlay())
+	{
+		UGameplayStatics::CreatePlayer(GetWorld(), true);
+	}
+	else
+	{
+		for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+		{
+			AGekkoPlayerController* PC = Cast<AGekkoPlayerController>(It->Get());
+			PC->Client_StartGekkoSession();
+		}
+	}
+	
+	GekkoGameState->bMatchStarted = true;
+}
+
+void AGekkoGameMode::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	
+	if (!GekkoGameInstance || !GekkoGameState)
+	{
+		return;
+	}
+	
+	StartMatch();
 }

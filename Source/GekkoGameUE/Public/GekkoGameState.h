@@ -10,6 +10,8 @@
 #include "GameFramework/GameStateBase.h"
 #include "GekkoGameState.generated.h"
 
+class UGekkoGameInstance;
+class AGekkoPlayerState;
 class ARedoReplayManager;
 /**
  * 
@@ -21,26 +23,30 @@ class GEKKOGAMEUE_API AGekkoGameState : public AGameStateBase, public IGekkoNetS
 	
 public:
 	AGekkoGameState();
-	bool IsRecordingAllowed() const;
+	bool ShouldSpawnReplayManager() const;
 
-	void Init();
-	virtual void BeginPlay() override;
+	void CreateInputBuffers();
+	void PrepareReplay();
 	
-	void ShutdownGame();
+protected:
+	
+	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-	void HandleMatchTimers();
+	
+public:
+	
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	
+	void HandleReplayTakeoverTimer();
 
 	virtual void Tick(float DeltaSeconds) override;
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnUnrealDraw();
-
-	bool CanStartMatch() const;
+	
 	FName GetOnlineSubsystemName() const;
 	bool IsListenConnectedMatch() const;
 	int32 GetPlayerID();
 	int32 GetOpponentID();
-	void StartOnlineMatch();
-	void StartMatch();
 	
 	// Rewind/Fast Forward to a collected snapshot.
 	UFUNCTION(BlueprintCallable)
@@ -66,8 +72,12 @@ public:
 	GekkoGame::Input PollLatestInput(int32 PlayerIndex) const;
 	GekkoGame::Input PollInput(int32 PlayerIndex) const;
 	
+	void UpdateOffline();
+	void UpdateOnline();
+	bool IsPlayingOffline() const;
+	void UpdateReplay();
 	void UpdateGame();
-	void AdvanceGameState(GekkoGame::Input Inputs[], GekkoGameEvent* Event = nullptr);
+	void AdvanceGameState(GekkoGame::Input InInputs[], GekkoGameEvent* Event = nullptr);
 	
 	virtual void GekkoGetLocalInput(int32 LocalPlayer, void* OutInputData) override;
 	virtual void GekkoLoad(GekkoGameEvent* Event) override;
@@ -103,6 +113,11 @@ public:
 	UFUNCTION(BlueprintPure)
 	FVector GetBallPosition(int32 index) const;
 	
+	UFUNCTION()
+	AGekkoPlayerState* GetOpponentState() const;
+	UFUNCTION()
+	virtual void StartGekkoSession(uint8 InIndex);
+	
 	UPROPERTY(BlueprintReadOnly)
 	int32 NetLocalPlayerID;
 	UPROPERTY(BlueprintReadOnly)
@@ -126,19 +141,25 @@ public:
 	// Whether a player has taken control of a replay.
 	UPROPERTY(BlueprintReadOnly)
 	bool bReplayTakeoverEnabled = false;
-	
-	UPROPERTY(EditDefaultsOnly)
-	float ClientStartMaxTime = 1.5f;
+	UPROPERTY(VisibleInstanceOnly, Replicated)
+	bool bMatchStarted = false;
 	UPROPERTY()
-	float ClientStartTime;
+	bool bGekkoSessionStarted = false;
+	
+	UPROPERTY(BlueprintReadOnly)
+	ARedoReplayManager* ReplayManager = nullptr;
+	UPROPERTY(BlueprintReadOnly)
+	UGekkoGameInstance* GekkoGameInstance = nullptr;
 
 private:
+	virtual bool HasGekkoMatchStarted();
+	
 	GekkoGame::Gamestate Gs = {};
 	
+	GekkoGame::Input Inputs[GekkoGame::MAX_PLAYERS];
+		
 	UPROPERTY()
 	TArray<FGekkoEndpoint> NullEndpoints;
-	UPROPERTY(VisibleInstanceOnly)
-	bool bMatchStarted = false;
 	UPROPERTY(VisibleInstanceOnly)
 	int32 ReplayTakeoverIndex = 0;
 	UPROPERTY(VisibleInstanceOnly)
@@ -154,8 +175,5 @@ private:
 	int32 LocalFrame = 0;
 	UPROPERTY(VisibleInstanceOnly)
 	int32 RemoteFrame = 0;
-
-	UPROPERTY()
-	ARedoReplayManager* ReplayManager = nullptr;
 	
 };

@@ -6,6 +6,8 @@
 #include "GameFramework/GameModeBase.h"
 #include "GekkoGameMode.generated.h"
 
+class UGekkoGameInstance;
+class AGekkoGameState;
 /**
  * 
  */
@@ -17,4 +19,33 @@ class GEKKOGAMEUE_API AGekkoGameMode : public AGameModeBase
 public:
 	
 	AGekkoGameMode();
+	
+protected:
+	
+	virtual void BeginPlay() override;
+	
+public:
+	UFUNCTION(BlueprintPure)
+	bool IsLocalPlay() const;
+	UFUNCTION()
+	void ReadyPlayer(int32 PlayerId);
+	virtual int32 GetNumPlayers() override;
+	UFUNCTION()
+	virtual bool CanStartMatch();
+	UFUNCTION()
+	void StartMatch();
+	
+	virtual void Tick(float DeltaSeconds) override;
+	
+	UPROPERTY()
+	bool bMatchStarted = false;
+	UPROPERTY()
+	bool bPlayerStateUpdated = false;
+	UPROPERTY()
+	TArray<int32> PlayersReady;
+	
+	UPROPERTY(BlueprintReadOnly)
+	TObjectPtr<UGekkoGameInstance> GekkoGameInstance;
+	UPROPERTY(BlueprintReadOnly)
+	TObjectPtr<AGekkoGameState> GekkoGameState;
 };
