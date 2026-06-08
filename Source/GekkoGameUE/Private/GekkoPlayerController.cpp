@@ -74,6 +74,10 @@ void AGekkoPlayerController::SendGekkoData(GekkoNetAddress* Addr, const char* Da
 	
 	if (!IsClient())
 	{
+		if (!GekkoGameState->GetOpponentState())
+		{
+			return;
+		}
 		if (auto PC = Cast<AGekkoPlayerController>(GekkoGameState->GetOpponentState()->GetPlayerController()))
 		{
 			PC->Client_SendGekkoData(Packet);
