@@ -33,9 +33,11 @@ public:
 	void Server_ClientReady(int32 PlayerId);
 	UFUNCTION(Client, Reliable)
 	void Client_StartGekkoSession();
+	UFUNCTION(BlueprintPure)
+	FString GetOpponentAddressAsString();
 	
 	UPROPERTY()
-	FString OpponentAddress;
+	TArray<uint8> OpponentAddressBuffer;
 	UPROPERTY(BlueprintReadOnly)
 	AGekkoGameState* GekkoGameState;
 	UPROPERTY(BlueprintReadOnly)

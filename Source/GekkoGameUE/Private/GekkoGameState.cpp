@@ -502,8 +502,16 @@ FVector AGekkoGameState::GetBallPosition(int32 index) const
 
 AGekkoPlayerState* AGekkoGameState::GetOpponentState() const
 {
-	auto LocalState = Cast<AGekkoPlayerState>(GetWorld()->GetFirstPlayerController()->PlayerState);
-	
+	auto PC = GetWorld()->GetFirstPlayerController();
+	if (!PC)
+	{
+		return nullptr;
+	}
+	auto LocalState = PC->PlayerState;
+	if (!LocalState)
+	{
+		return nullptr;
+	}
 	for (int i = 0; i < PlayerArray.Num(); i++)
 	{
 		if (LocalState->GetPlayerId() != PlayerArray[i]->GetPlayerId())
@@ -511,7 +519,6 @@ AGekkoPlayerState* AGekkoGameState::GetOpponentState() const
 			return Cast<AGekkoPlayerState>(PlayerArray[i]);
 		}
 	}
-	
 	return nullptr;
 }
 

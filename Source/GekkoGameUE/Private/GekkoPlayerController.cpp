@@ -64,9 +64,10 @@ bool AGekkoPlayerController::IsClient() const
 
 void AGekkoPlayerController::SendGekkoData(GekkoNetAddress* Addr, const char* Data, int Length)
 {
-	if (OpponentAddress.IsEmpty())
+	if (OpponentAddressBuffer.IsEmpty())
 	{
-		OpponentAddress = FString(UTF8_TO_TCHAR((const char*)Addr->data));
+		OpponentAddressBuffer.AddUninitialized(Addr->size);
+		FMemory::Memcpy(OpponentAddressBuffer.GetData(), Addr->data, Addr->size);
 	}
 	
 	TArray<uint8> Packet;
@@ -101,10 +102,9 @@ GekkoNetResult** AGekkoPlayerController::ReceiveGekkoData(int* Length)
 		GekkoNetResult* Res = static_cast<GekkoNetResult*>(FMemory::Malloc(sizeof(GekkoNetResult)));
 		FMemory::Memzero(Res, sizeof(GekkoNetResult));
 		
-		auto Convert = StringCast<UTF8CHAR>(*OpponentAddress);
-		Res->addr.size = Convert.Length();
-		Res->addr.data = FMemory::Malloc(Res->addr.size);
-		FMemory::Memcpy(Res->addr.data, Convert.Get(), Res->addr.size);
+		Res->addr.data = FMemory::Malloc(OpponentAddressBuffer.Num());
+		Res->addr.size = OpponentAddressBuffer.Num();
+		FMemory::Memcpy(Res->addr.data, OpponentAddressBuffer.GetData(), Res->addr.size);
 
 		Res->data_len = Packet.Num();
 		Res->data = FMemory::Malloc(Res->data_len);
@@ -117,6 +117,16 @@ GekkoNetResult** AGekkoPlayerController::ReceiveGekkoData(int* Length)
 	*Length = GekkoResults.Num();
 	
 	return GekkoResults.GetData();
+}
+
+FString AGekkoPlayerController::GetOpponentAddressAsString()
+{
+	if (OpponentAddressBuffer.IsEmpty())
+	{
+		return "NONE";
+	}
+	
+	return FString(UTF8_TO_TCHAR(OpponentAddressBuffer.GetData()));
 }
 
 void AGekkoPlayerController::Server_ClientReady_Implementation(int32 PlayerId)
