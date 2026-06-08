@@ -28,7 +28,7 @@ class GEKKOGAMEUE_API UGekkoGameInstance : public UAdvancedFriendsGameInstance
 	
 	// Whether matches will use Direct Connections or match via Unreal's Online Subsystem.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	bool bLanMode = false;
+	bool bDirectMode = false;
 	// Is using Asio Transport or not.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bUsingAsio = false;
@@ -38,7 +38,7 @@ class GEKKOGAMEUE_API UGekkoGameInstance : public UAdvancedFriendsGameInstance
 	
 	// The current Player ID that is used, in Online Subsystem matches this will not be used in favour of the actual Player ID's themselves.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 PlayerId = -1;
+	int32 DirectPlayerId = -1;
 	// The local port that will be used by the client
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 LocalPort;

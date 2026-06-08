@@ -22,11 +22,11 @@ protected:
 	virtual void ReadyClient();
 	virtual void Tick(float DeltaSeconds) override;
 public:
-	UFUNCTION(BlueprintImplementableEvent)
-	void GekkoControllerCheck();
 	virtual void Client_SendGekkoData_Implementation(const TArray<uint8>& Packet) override;
-	UFUNCTION(Server, Reliable)
+	UFUNCTION(Server, Unreliable)
 	virtual void Server_SendGekkoDataDirect(const TArray<uint8>& Packet);
+	UFUNCTION(BlueprintPure)
+	bool IsClient() const;
 	virtual void SendGekkoData(GekkoNetAddress* Addr, const char* Data, int Length) override;
 	virtual GekkoNetResult** ReceiveGekkoData(int* Length) override;
 	UFUNCTION(Server, Reliable)

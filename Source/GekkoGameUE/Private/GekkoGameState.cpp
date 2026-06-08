@@ -369,12 +369,12 @@ void AGekkoGameState::UpdateOnline()
 
 bool AGekkoGameState::IsPlayingOffline() const
 {
-	return GetNetMode() == NM_Standalone && !GekkoGameInstance->bLanMode;
+	return GetNetMode() == NM_Standalone && !GekkoGameInstance->bDirectMode;
 }
 
 void AGekkoGameState::UpdateGame()
 {
-	if (!HasGekkoMatchStarted())
+	if (!HasMatchStarted())
 	{
 		return;
 	}
@@ -382,10 +382,8 @@ void AGekkoGameState::UpdateGame()
 	if (!IsPlayingOffline())
 	{
 		UpdateOnline();
-		return;
 	}
-	
-	if (ReplayManager && ReplayManager->GetManagerBehaviour() == ERedoReplayMode::Playback)
+	else if (ReplayManager && ReplayManager->GetManagerBehaviour() == ERedoReplayMode::Playback)
 	{
 		UpdateReplay();
 	}
@@ -517,9 +515,38 @@ AGekkoPlayerState* AGekkoGameState::GetOpponentState() const
 	return nullptr;
 }
 
-bool AGekkoGameState::HasGekkoMatchStarted()
+bool AGekkoGameState::HasMatchStarted() const
 {
-	return bMatchStarted && bGekkoSessionStarted;
+	bool bCanStart;
+	
+	if (IsNetMode(NM_Standalone))
+	{
+		bCanStart = bMatchStarted;
+	}
+	else
+	{
+		bCanStart =  bMatchStarted && bGekkoSessionStarted;
+	}
+	
+	if (bCanStart)
+	{
+		return Super::HasMatchStarted();
+	}
+	
+	return false;
+}
+
+FString AGekkoGameState::GetOpponentAddress() const
+{
+	if (GekkoGameInstance->bDirectMode)
+	{
+		if (GekkoGameInstance->OpponentAddresses.Num() > 0)
+		{
+			return GekkoGameInstance->OpponentAddresses[0];
+		}
+	}
+	
+	return GetOpponentState()->GetUniqueId().ToString();
 }
 
 void AGekkoGameState::StartGekkoSession(uint8 InIndex)
@@ -532,7 +559,13 @@ void AGekkoGameState::StartGekkoSession(uint8 InIndex)
 	}
 	
 	GekkoNet->SetSimulationHost(this);
-	GekkoNet->bUseDedicatedAdapterIfAvailable = false;
+	GekkoNet->bUseAsioTransport = GekkoGameInstance->bUsingAsio;
+	GekkoNet->bUseDirectAdapterIfAvailable = GekkoGameInstance->bDirectMode;
+
+	if (GekkoNet->bUseDirectAdapterIfAvailable)
+	{
+		GekkoNet->SetLocalPort(GekkoGameInstance->LocalPort);
+	}
 
 	FGekkoConfig SessionConfig 
 	{
@@ -547,7 +580,7 @@ void AGekkoGameState::StartGekkoSession(uint8 InIndex)
 	};
 	
 	GekkoNet->StartSession(SessionConfig, false);
-	FString OpponentAddress = GetOpponentState()->GetUniqueId().ToString();
+	FString OpponentAddress = GetOpponentAddress();
 	
 	if (InIndex == 0)
 	{

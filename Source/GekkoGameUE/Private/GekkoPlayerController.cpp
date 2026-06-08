@@ -57,6 +57,11 @@ void AGekkoPlayerController::Server_SendGekkoDataDirect_Implementation(const TAr
 	UE_LOG(LogGekkoGame, Log, TEXT("Packets received from Client."));
 }
 
+bool AGekkoPlayerController::IsClient() const
+{
+	return IsNetMode(NM_Client);
+}
+
 void AGekkoPlayerController::SendGekkoData(GekkoNetAddress* Addr, const char* Data, int Length)
 {
 	if (OpponentAddress.IsEmpty())
@@ -67,7 +72,7 @@ void AGekkoPlayerController::SendGekkoData(GekkoNetAddress* Addr, const char* Da
 	TArray<uint8> Packet;
 	Packet.Append((uint8*)Data, Length);
 	
-	if (!IsNetMode(NM_Client))
+	if (!IsClient())
 	{
 		if (auto PC = Cast<AGekkoPlayerController>(GekkoGameState->GetOpponentState()->GetPlayerController()))
 		{

@@ -137,7 +137,7 @@ void AGekkoSliderState::UpdateOnline()
 			false,
 			0 };
 		
-		auto PID = GI->PlayerId;
+		auto PID = GI->DirectPlayerId;
 		FSliderEndpoint LocalEndpoint = RemoteEndpoints.FindRef(PID);
 		
 		GNS->SetTransportType(EGekkoTransportType::Asio);

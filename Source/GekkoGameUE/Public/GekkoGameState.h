@@ -72,9 +72,11 @@ public:
 	GekkoGame::Input PollLatestInput(int32 PlayerIndex) const;
 	GekkoGame::Input PollInput(int32 PlayerIndex) const;
 	
+	UFUNCTION(BlueprintPure)
+	bool IsPlayingOffline() const;
+	
 	void UpdateOffline();
 	void UpdateOnline();
-	bool IsPlayingOffline() const;
 	void UpdateReplay();
 	void UpdateGame();
 	void AdvanceGameState(GekkoGame::Input InInputs[], GekkoGameEvent* Event = nullptr);
@@ -152,8 +154,9 @@ public:
 	UGekkoGameInstance* GekkoGameInstance = nullptr;
 
 private:
-	virtual bool HasGekkoMatchStarted();
-	
+	virtual bool HasMatchStarted() const override;
+	FString GetOpponentAddress() const;
+
 	GekkoGame::Gamestate Gs = {};
 	
 	GekkoGame::Input Inputs[GekkoGame::MAX_PLAYERS];

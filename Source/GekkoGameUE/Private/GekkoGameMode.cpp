@@ -26,7 +26,7 @@ void AGekkoGameMode::BeginPlay()
 
 bool AGekkoGameMode::IsLocalPlay() const
 {
-	return GetNetMode() == NM_Standalone;
+	return GekkoGameState->IsPlayingOffline();
 }
 
 void AGekkoGameMode::ReadyPlayer(int32 PlayerId)
@@ -66,6 +66,13 @@ bool AGekkoGameMode::CanStartMatch()
 		return false;
 	}
 	
+	// If direct connect is enabled, we will start the match
+	if (GekkoGameInstance->bDirectMode)
+	{
+		UE_LOG(LogGekkoGame, Log, TEXT("Starting a direct networked match."));
+		return true;
+	}
+	
 	// If two players are connected in the lobby, we can start the match.
 	if (GetNumPlayers() == 2)
 	{
@@ -86,6 +93,10 @@ void AGekkoGameMode::StartMatch()
 	if (IsLocalPlay())
 	{
 		UGameplayStatics::CreatePlayer(GetWorld(), true);
+	}
+	else if (GekkoGameInstance->bDirectMode)
+	{
+		GekkoGameState->StartGekkoSession(GekkoGameInstance->DirectPlayerId);
 	}
 	else
 	{
