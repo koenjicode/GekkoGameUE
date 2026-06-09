@@ -593,6 +593,7 @@ void AGekkoGameState::StartGekkoSession(uint8 InIndex)
 	};
 	
 	GekkoNet->StartSession(SessionConfig, false);
+	GekkoNet->SetRunahead(8);
 	
 	FString OpponentAddress = GetOpponentAddress();
 	
@@ -606,6 +607,8 @@ void AGekkoGameState::StartGekkoSession(uint8 InIndex)
 		GekkoNet->AddActor(EGekkoPlayerType::RemotePlayer, OpponentAddress);
 		NetLocalPlayerID = GekkoNet->AddActor();
 	}
+	
+	GekkoNet->SetLocalDelay(GekkoGameInstance->LocalDelayAmount, NetLocalPlayerID, true);
 	
 	GekkoNet->OnPlayerDisconnected.AddUniqueDynamic(this, &AGekkoGameState::PlayerDisconnected);
 	
