@@ -593,7 +593,7 @@ void AGekkoGameState::StartGekkoSession(uint8 InIndex)
 	};
 	
 	GekkoNet->StartSession(SessionConfig, false);
-	GekkoNet->SetRunahead(8);
+	GekkoNet->SetRunahead(GekkoGameInstance->RunaheadAmount);
 	
 	FString OpponentAddress = GetOpponentAddress();
 	

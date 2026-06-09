@@ -32,6 +32,8 @@ class GEKKOGAMEUE_API UGekkoGameInstance : public UAdvancedFriendsGameInstance
 	// Is using Asio Transport or not.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bUsingAsio = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 RunaheadAmount = 8;
 	// The amount of delay used as a baseline in the match, this value can be used offline to implement an artificial amount of delay.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 LocalDelayAmount = 1;
