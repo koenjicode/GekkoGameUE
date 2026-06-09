@@ -72,6 +72,7 @@ namespace GekkoGame {
             } flags = {};
         } state = {};
 
+        void Reset();
         void Init(int num_players);
 #ifdef GEKKONET_USE_SDL
         void Draw(SDL_Renderer* renderer);

@@ -500,6 +500,12 @@ FVector AGekkoGameState::GetBallPosition(int32 index) const
 	return pos;
 }
 
+uint8 AGekkoGameState::GetScore(int32 index) const
+{
+	uint8 score = Gs.state.scores[index];
+	return score;
+}
+
 AGekkoPlayerState* AGekkoGameState::GetOpponentState() const
 {
 	auto PC = GetWorld()->GetFirstPlayerController();
@@ -587,6 +593,7 @@ void AGekkoGameState::StartGekkoSession(uint8 InIndex)
 	};
 	
 	GekkoNet->StartSession(SessionConfig, false);
+	
 	FString OpponentAddress = GetOpponentAddress();
 	
 	if (InIndex == 0)

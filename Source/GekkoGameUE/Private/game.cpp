@@ -3,14 +3,8 @@
 #include <algorithm>
 
 namespace GekkoGame {
-    void Gamestate::Init(int num_players) {
-        state = {};
-        state.flags.players = num_players - 1;
-        state.flags.balls = 0;
-        state.flags.started = true;
-        state.flags.finished = false;
-        //setup default move speed multiplier for each entity
-        std::memset(state.move_speed, 1, sizeof(state.move_speed));
+    void Gamestate::Reset()
+    {
         // setup paddle positions
         for (int i = 0; i <= state.flags.players; i++) {
             if (i <= 1) {
@@ -28,6 +22,17 @@ namespace GekkoGame {
             state.e_vel[i].x = -1800;
             state.e_vel[i].y = 0;
         }
+    }
+
+    void Gamestate::Init(int num_players) {
+        state = {};
+        state.flags.players = num_players - 1;
+        state.flags.balls = 0;
+        state.flags.started = true;
+        state.flags.finished = false;
+        //setup default move speed multiplier for each entity
+        std::memset(state.move_speed, 1, sizeof(state.move_speed));
+        Reset();
     }
 
 #ifdef GEKKONET_USE_SDL
@@ -224,7 +229,13 @@ namespace GekkoGame {
             }
 
             if (respawn) {
+                const bool p1Score = (pos.x > 0);
+                const int scoreId = p1Score ? 0 : 1;
+                
+                state.scores[scoreId] = std::clamp(state.scores[scoreId] + 1, 0, 255);
+                
                 state.move_speed[i] = 1;
+                
                 pos.x = FIELD_SIZE / 2 * GAME_SCALE;
                 pos.y = FIELD_SIZE / 2 * GAME_SCALE;
                 vel.x = -1800;

@@ -114,6 +114,8 @@ public:
 	// Get ball position in gekko game state.
 	UFUNCTION(BlueprintPure)
 	FVector GetBallPosition(int32 index) const;
+	UFUNCTION(BlueprintPure)
+	uint8 GetScore(int32 index) const;
 	
 	UFUNCTION()
 	AGekkoPlayerState* GetOpponentState() const;
