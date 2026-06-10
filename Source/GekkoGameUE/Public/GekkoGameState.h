@@ -125,7 +125,7 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 	int32 NetLocalPlayerID;
 	UPROPERTY(BlueprintReadOnly)
-	FGekkoSimpleNetworkStats NetStats;
+	FGekkoNetworkStats NetStats;
 	
 	TRingBuffer<GekkoGame::Input> P1InputBuffer;
 	TRingBuffer<GekkoGame::Input> P2InputBuffer;

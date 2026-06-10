@@ -65,7 +65,7 @@ public:
 	UPROPERTY()
 	TMap<int32, FSliderEndpoint> RemoteEndpoints;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
-	TArray<FGekkoSimpleNetworkStats> NetworkStats;
+	TArray<FGekkoNetworkStats> NetworkStats;
 	UPROPERTY(VisibleInstanceOnly)
 	int32 NetworkStatsTimer = 0;
 	UPROPERTY(EditDefaultsOnly)

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "AdvancedFriendsGameInstance.h"
+#include "GekkoNetTypes.h"
 #include "Engine/GameInstance.h"
 #include "GekkoGameInstance.generated.h"
 
@@ -37,6 +38,24 @@ class GEKKOGAMEUE_API UGekkoGameInstance : public UAdvancedFriendsGameInstance
 	// The amount of delay used as a baseline in the match, this value can be used offline to implement an artificial amount of delay.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 LocalDelayAmount = 1;
+	// Whether the connecting player is a spectator or not.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bIsSpectating;
+	
+	// Session configuration provided by the host.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGekkoConfig HostConfig;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 SpectatorAmount = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 InputPredictionWindowSize = 8;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bLimitedSaving = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bDesyncDetection = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 SpectatorDelay = 180;
 	
 	// The current Player ID that is used, in Online Subsystem matches this will not be used in favour of the actual Player ID's themselves.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)

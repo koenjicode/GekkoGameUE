@@ -1,5 +1,6 @@
 ﻿#include "GekkoPlayerController.h"
 
+#include "GekkoGameInstance.h"
 #include "GekkoGameLog.h"
 #include "GekkoGameMode.h"
 #include "GekkoGameState.h"
@@ -10,6 +11,7 @@ void AGekkoPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 	GekkoGameState = Cast<AGekkoGameState>(GetWorld()->GetGameState());
+	GekkoGameInstance = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
 }
 
 void AGekkoPlayerController::ReadyClient()
@@ -41,7 +43,7 @@ void AGekkoPlayerController::Tick(float DeltaSeconds)
 void AGekkoPlayerController::Client_SendGekkoData_Implementation(const TArray<uint8>& Packet)
 {
 	GekkoMessages.Enqueue(Packet);
-	UE_LOG(LogGekkoGame, Log, TEXT("Packets received from Host."));
+	UE_LOG(LogGekkoGame, Verbose, TEXT("Packets received from Host."));
 }
 
 void AGekkoPlayerController::Server_SendGekkoDataDirect_Implementation(const TArray<uint8>& Packet)
@@ -54,7 +56,7 @@ void AGekkoPlayerController::Server_SendGekkoDataDirect_Implementation(const TAr
 	}
 	
 	PC->GekkoMessages.Enqueue(Packet);
-	UE_LOG(LogGekkoGame, Log, TEXT("Packets received from Client."));
+	UE_LOG(LogGekkoGame, Verbose, TEXT("Packets received from Client."));
 }
 
 bool AGekkoPlayerController::IsClient() const
@@ -82,13 +84,13 @@ void AGekkoPlayerController::SendGekkoData(GekkoNetAddress* Addr, const char* Da
 		if (auto PC = Cast<AGekkoPlayerController>(GekkoGameState->GetOpponentState()->GetPlayerController()))
 		{
 			PC->Client_SendGekkoData(Packet);
-			UE_LOG(LogGekkoGame, Log, TEXT("Sending packets to client."));
+			UE_LOG(LogGekkoGame, VeryVerbose, TEXT("Sending packets to client."));
 		}
 	}
 	else
 	{
 		Server_SendGekkoDataDirect(Packet);
-		UE_LOG(LogGekkoGame, Log, TEXT("Sending packets to server."));
+		UE_LOG(LogGekkoGame, VeryVerbose, TEXT("Sending packets to server."));
 	}
 }
 
@@ -134,12 +136,17 @@ void AGekkoPlayerController::Server_ClientReady_Implementation(int32 PlayerId)
 	Cast<AGekkoGameMode>(GetWorld()->GetAuthGameMode())->ReadyPlayer(PlayerId);
 }
 
-void AGekkoPlayerController::Client_StartGekkoSession_Implementation()
+void AGekkoPlayerController::Client_StartGekkoSession_Implementation(FGekkoConfig HostConfig)
 {
-	int32 PID = GetNetMode() == NM_Client ? 1 : 0;
 	if (!GekkoGameState)
 	{
 		return;
 	}
+	if (!GekkoGameInstance)
+	{
+		return;
+	}
+	GekkoGameInstance->HostConfig = HostConfig;
+	int32 PID = GetNetMode() == NM_Client ? 1 : 0;
 	GekkoGameState->StartGekkoSession(PID);
 }

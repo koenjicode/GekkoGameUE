@@ -41,8 +41,8 @@ void AGekkoGameState::CreateInputBuffers()
 		return;
 	}
 	
-	P1InputBuffer.Reserve(MAX_LOCAL_DELAY_FRAMES);
-	P2InputBuffer.Reserve(MAX_LOCAL_DELAY_FRAMES);
+	P1InputBuffer.Reserve(GekkoGameInstance->LocalDelayAmount);
+	P2InputBuffer.Reserve(GekkoGameInstance->LocalDelayAmount);
 }
 
 void AGekkoGameState::PrepareReplay()
@@ -251,7 +251,7 @@ void AGekkoGameState::HandleBuffer()
 	for (int i = 0; i < num_players; ++i)
 	{
 		TRingBuffer<GekkoGame::Input> &InputBuffer = i == 0 ? P1InputBuffer : P2InputBuffer;
-		if (InputBuffer.Num() > MAX_LOCAL_DELAY_FRAMES)
+		if (InputBuffer.Num() > GekkoGameInstance->LocalDelayAmount)
 		{
 			InputBuffer.PopFront();
 		}
@@ -311,7 +311,7 @@ GekkoGame::Input AGekkoGameState::PollInput(int32 PlayerIndex) const
 	{
 		return PollLatestInput(PlayerIndex);
 	}
-	const int32 i = FMath::Max(0, MAX_LOCAL_DELAY_FRAMES - LocalDelay);
+	const int32 i = FMath::Max(0, GekkoGameInstance->LocalDelayAmount - LocalDelay);
 	return InputBuffer.IsValidIndex(i) ? InputBuffer[i] : GekkoGame::Input();
 }
 
@@ -357,14 +357,7 @@ void AGekkoGameState::UpdateOnline()
 		
 	GNS->UpdateSession();
 	
-	if (NetworkStatsTimer <= 0)
-	{
-		NetStats = GNS->UpdateNetworkStats(NetLocalPlayerID ^ 1);
-		NetworkStatsTimer = MAX_NET_STATS_TIME;
-	}
-		
-	NetworkStatsTimer -= 1;
-	NetworkStatsTimer = FMath::Max(NetworkStatsTimer, 0);
+	NetStats = GNS->GetNetworkStats(NetLocalPlayerID ^ 1);
 }
 
 bool AGekkoGameState::IsPlayingOffline() const
@@ -444,6 +437,10 @@ void AGekkoGameState::GekkoAdvance(GekkoGameEvent* Event)
 		UE_LOG(LogGekkoGame, VeryVerbose, TEXT(" p%d %d%d%d%d"), j, inputs[j].left, inputs[j].right, inputs[j].up,  inputs[j].down);
 	}
 	RemoteFrame = Event->data.adv.frame;
+	if (Event->data.adv.rolling_back)
+	{
+		UE_LOG(LogGekkoGame, Warning, TEXT("Rollback occured on frame %d"), Event->data.adv.frame);
+	}
 	AdvanceGameState(inputs, Event);
 }
 
@@ -579,20 +576,8 @@ void AGekkoGameState::StartGekkoSession(uint8 InIndex)
 	{
 		GekkoNet->SetLocalPort(GekkoGameInstance->LocalPort);
 	}
-
-	FGekkoConfig SessionConfig 
-	{
-		2,
-		0,
-		8,
-		0,
-		sizeof(GekkoGame::Input),
-		sizeof(GekkoGame::Gamestate::state),
-		false,
-		true, 
-	};
 	
-	GekkoNet->StartSession(SessionConfig, false);
+	GekkoNet->StartSession(GekkoGameInstance->HostConfig, GekkoGameInstance->bIsSpectating);
 	GekkoNet->SetRunahead(GekkoGameInstance->RunaheadAmount);
 	
 	FString OpponentAddress = GetOpponentAddress();

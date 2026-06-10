@@ -94,16 +94,24 @@ void AGekkoGameMode::StartMatch()
 	{
 		UGameplayStatics::CreatePlayer(GetWorld(), true);
 	}
-	else if (GekkoGameInstance->bDirectMode)
-	{
-		GekkoGameState->StartGekkoSession(GekkoGameInstance->DirectPlayerId);
-	}
 	else
 	{
-		for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+		auto& HostConfig = GekkoGameInstance->HostConfig;
+		HostConfig.NumPlayers = 2;
+		HostConfig.StateSize = sizeof(GekkoGame::Gamestate::state);
+		HostConfig.InputSize = sizeof(GekkoGame::Input);
+		
+		if (GekkoGameInstance->bDirectMode)
 		{
-			AGekkoPlayerController* PC = Cast<AGekkoPlayerController>(It->Get());
-			PC->Client_StartGekkoSession();
+			GekkoGameState->StartGekkoSession(GekkoGameInstance->DirectPlayerId);
+		}
+		else
+		{
+			for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+			{
+				AGekkoPlayerController* PC = Cast<AGekkoPlayerController>(It->Get());
+				PC->Client_StartGekkoSession(GekkoGameInstance->HostConfig);
+			}
 		}
 	}
 	

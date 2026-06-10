@@ -7,6 +7,7 @@
 #include "GameFramework/PlayerController.h"
 #include "GekkoPlayerController.generated.h"
 
+class UGekkoGameInstance;
 class AGekkoGameState;
 class AGekkoPlayerState;
 /**
@@ -32,7 +33,7 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_ClientReady(int32 PlayerId);
 	UFUNCTION(Client, Reliable)
-	void Client_StartGekkoSession();
+	void Client_StartGekkoSession(FGekkoConfig HostConfig);
 	UFUNCTION(BlueprintPure)
 	FString GetOpponentAddressAsString();
 	
@@ -40,6 +41,8 @@ public:
 	TArray<uint8> OpponentAddressBuffer;
 	UPROPERTY(BlueprintReadOnly)
 	AGekkoGameState* GekkoGameState;
+	UPROPERTY(BlueprintReadOnly)
+	UGekkoGameInstance* GekkoGameInstance;
 	UPROPERTY(BlueprintReadOnly)
 	bool bClientReady;
 };

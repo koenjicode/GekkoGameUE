@@ -111,18 +111,12 @@ void AGekkoSliderState::UpdateOnline()
 	if (GNS->IsSessionRunning())
 	{
 		GNS->UpdateSession();
-		if (NetworkStatsTimer <= 0)
+		
+		for (int i = 0; i < SliderGame::MAX_PLAYERS; ++i)
 		{
-			NetworkStats.Reset();
-			for (int i = 0; i < SliderGame::MAX_PLAYERS; ++i)
-			{
-				auto NetworkStat = GNS->UpdateNetworkStats(i);
-				NetworkStats.Add(NetworkStat);
-			}
-			NetworkStatsTimer = NetworkStatsTimerMax;
+			auto& Stat = NetworkStats[i];
+			Stat = GNS->GetNetworkStats(i);
 		}
-		NetworkStatsTimer -= 1;
-		NetworkStatsTimer = FMath::Max(NetworkStatsTimer, 0);
 	}
 	else
 	{
