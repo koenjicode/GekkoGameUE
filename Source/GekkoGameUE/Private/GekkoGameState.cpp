@@ -593,7 +593,7 @@ void AGekkoGameState::StartGekkoSession(uint8 InIndex)
 		NetLocalPlayerID = GekkoNet->AddActor();
 	}
 	
-	GekkoNet->SetLocalDelay(GekkoGameInstance->LocalDelayAmount, NetLocalPlayerID, true);
+	GekkoNet->SetLocalDelay(GekkoGameInstance->LocalDelayAmount, NetLocalPlayerID, false);
 	
 	GekkoNet->OnPlayerDisconnected.AddUniqueDynamic(this, &AGekkoGameState::PlayerDisconnected);
 	

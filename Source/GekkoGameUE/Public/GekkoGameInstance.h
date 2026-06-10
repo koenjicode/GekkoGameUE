@@ -46,17 +46,6 @@ class GEKKOGAMEUE_API UGekkoGameInstance : public UAdvancedFriendsGameInstance
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FGekkoConfig HostConfig;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 SpectatorAmount = 0;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 InputPredictionWindowSize = 8;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	bool bLimitedSaving = false;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	bool bDesyncDetection = false;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 SpectatorDelay = 180;
-	
 	// The current Player ID that is used, in Online Subsystem matches this will not be used in favour of the actual Player ID's themselves.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 DirectPlayerId = -1;

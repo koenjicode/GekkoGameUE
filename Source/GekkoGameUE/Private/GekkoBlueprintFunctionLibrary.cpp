@@ -23,7 +23,7 @@ int32 UGekkoBlueprintFunctionLibrary::GetPlayInEditorID()
 		return UE::GetPlayInEditorID();
 	}
 #endif
-	return 0;
+	return -1;
 }
 
 FString UGekkoBlueprintFunctionLibrary::GetUniquePlayerIDAsString(int32 PlayerIndex)
