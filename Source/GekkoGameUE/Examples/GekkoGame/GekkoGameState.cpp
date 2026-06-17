@@ -1,15 +1,14 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "GekkoGameState.h"
-#include "GekkoGameInstance.h"
-#include "GekkoGameLog.h"
 #include "GekkoGameMode.h"
-#include "GekkoNetLog.h"
 #include "GekkoNetSubsystem.h"
 #include "GekkoPlayerState.h"
 #include "RedoReplayManager.h"
 #include "RedoReplaySaveData.h"
 #include "GameFramework/PlayerState.h"
+#include "GekkoGameUE/GekkoGameLog.h"
+#include "GekkoGameUE/Core/GekkoGameInstance.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 
@@ -559,6 +558,22 @@ FString AGekkoGameState::GetOpponentAddress() const
 	return GetOpponentState()->GetUniqueId().ToString();
 }
 
+FString AGekkoGameState::GetHostAddress()
+{
+	auto PC = GetWorld()->GetFirstPlayerController();
+	if (PC && PC->HasAuthority())
+	{
+			return PC->PlayerState->GetUniqueId().ToString();
+	}
+
+	if (GetWorld()->GetGameState()->PlayerArray.Num() > 0)
+	{
+		
+	}
+	
+	return "";
+}
+
 void AGekkoGameState::StartGekkoSession(uint8 InIndex)
 {
 	UGekkoNetSubsystem* GekkoNet = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
@@ -577,19 +592,35 @@ void AGekkoGameState::StartGekkoSession(uint8 InIndex)
 		GekkoNet->SetLocalPort(GekkoGameInstance->LocalPort);
 	}
 	
-	GekkoNet->StartSession(GekkoGameInstance->HostConfig, GekkoGameInstance->bIsSpectating);
+	auto& HostConfig = GekkoGameInstance->HostConfig;
+	bool& bIsSpectator = GekkoGameInstance->bIsSpectating;
+	
+	GekkoNet->StartSession(HostConfig, bIsSpectator);
 	GekkoNet->SetRunahead(GekkoGameInstance->RunaheadAmount);
 	
-	FString OpponentAddress = GetOpponentAddress();
+	FString RemoteAddress;
+	if (!bIsSpectator)
+	{
+		RemoteAddress = GetOpponentAddress();
+	}
+	else
+	{
+		RemoteAddress = GetHostAddress();
+	}
+
+	for (int i = 0; i < HostConfig.NumPlayers; ++i)
+	{
+		
+	}
 	
 	if (InIndex == 0)
 	{
 		NetLocalPlayerID = GekkoNet->AddActor();
-		GekkoNet->AddActor(EGekkoPlayerType::RemotePlayer, OpponentAddress);
+		GekkoNet->AddActor(EGekkoPlayerType::RemotePlayer, RemoteAddress);
 	}
 	else
 	{
-		GekkoNet->AddActor(EGekkoPlayerType::RemotePlayer, OpponentAddress);
+		GekkoNet->AddActor(EGekkoPlayerType::RemotePlayer, RemoteAddress);
 		NetLocalPlayerID = GekkoNet->AddActor();
 	}
 	

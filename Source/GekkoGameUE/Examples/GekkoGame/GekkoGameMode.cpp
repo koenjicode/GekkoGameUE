@@ -2,10 +2,10 @@
 
 
 #include "GekkoGameMode.h"
-#include "GekkoGameInstance.h"
-#include "GekkoGameLog.h"
 #include "GekkoGameState.h"
 #include "GekkoPlayerController.h"
+#include "GekkoGameUE/GekkoGameLog.h"
+#include "GekkoGameUE/Core/GekkoGameInstance.h"
 #include "Kismet/GameplayStatics.h"
 
 AGekkoGameMode::AGekkoGameMode()
@@ -74,7 +74,8 @@ bool AGekkoGameMode::CanStartMatch()
 	}
 	
 	// If two players are connected in the lobby, we can start the match.
-	if (GetNumPlayers() == 2)
+	int32 RequiredNumberOfPlayers = 2;
+	if (GetNumPlayers() == RequiredNumberOfPlayers + GekkoGameInstance->HostConfig.MaxSpectators)
 	{
 		UE_LOG(LogGekkoGame, Log, TEXT("Starting a networked match via RPC."));
 		return true;

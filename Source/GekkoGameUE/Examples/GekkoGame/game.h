@@ -46,6 +46,11 @@ namespace GekkoGame {
         uint8_t left : 1;
         uint8_t right : 1;
     };
+    
+    struct Test
+    {
+        int32 NumTest;
+    };
 
     struct Gamestate {
         struct NoState {

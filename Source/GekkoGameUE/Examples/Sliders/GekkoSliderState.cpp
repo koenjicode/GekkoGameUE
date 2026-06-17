@@ -2,8 +2,8 @@
 
 
 #include "GekkoSliderState.h"
-#include "GekkoGameInstance.h"
 #include "GekkoNetSubsystem.h"
+#include "GekkoGameUE/Core/GekkoGameInstance.h"
 #include "Kismet/GameplayStatics.h"
 
 static constexpr float OneFrame = 1.0f / 60;

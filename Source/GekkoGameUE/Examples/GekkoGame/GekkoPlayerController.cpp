@@ -1,11 +1,10 @@
 ﻿#include "GekkoPlayerController.h"
-
-#include "GekkoGameInstance.h"
-#include "GekkoGameLog.h"
 #include "GekkoGameMode.h"
 #include "GekkoGameState.h"
 #include "GekkoPlayerState.h"
 #include "GameFramework/PlayerState.h"
+#include "GekkoGameUE/GekkoGameLog.h"
+#include "GekkoGameUE/Core/GekkoGameInstance.h"
 
 void AGekkoPlayerController::BeginPlay()
 {

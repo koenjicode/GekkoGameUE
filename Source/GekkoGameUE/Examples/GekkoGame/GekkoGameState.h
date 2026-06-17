@@ -158,6 +158,7 @@ public:
 private:
 	virtual bool HasMatchStarted() const override;
 	FString GetOpponentAddress() const;
+	FString GetHostAddress();
 
 	GekkoGame::Gamestate Gs = {};
 	
