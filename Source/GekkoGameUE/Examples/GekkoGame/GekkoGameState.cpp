@@ -558,7 +558,7 @@ FString AGekkoGameState::GetOpponentAddress() const
 	return GetOpponentState()->GetUniqueId().ToString();
 }
 
-FString AGekkoGameState::GetHostAddress()
+FString AGekkoGameState::GetHostAddress() const
 {
 	auto PC = GetWorld()->GetFirstPlayerController();
 	if (PC && PC->HasAuthority())
@@ -566,12 +566,19 @@ FString AGekkoGameState::GetHostAddress()
 			return PC->PlayerState->GetUniqueId().ToString();
 	}
 
-	if (GetWorld()->GetGameState()->PlayerArray.Num() > 0)
+	auto& PlayerArray = GetWorld()->GetGameState()->PlayerArray;
+	if (PlayerArray.Num() > 0)
 	{
-		
+		for (int i = 0; i < PlayerArray.Num(); i++)
+		{
+			if (PC->PlayerState->GetUniqueId().ToString() != PlayerArray[i]->GetUniqueId().ToString())
+			{
+				return PlayerArray[i]->GetUniqueId().ToString();
+			}
+		}
 	}
 	
-	return "";
+	return "NO_HOST";
 }
 
 void AGekkoGameState::StartGekkoSession(uint8 InIndex)
