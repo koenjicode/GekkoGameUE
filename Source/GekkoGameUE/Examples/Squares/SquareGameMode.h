@@ -4,18 +4,17 @@
 
 #include "CoreMinimal.h"
 #include "GekkoGameUE/Examples/GekkoBaseGameMode.h"
-#include "GekkoGameMode.generated.h"
+#include "SquareGameMode.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class GEKKOGAMEUE_API AGekkoGameMode : public AGekkoBaseGameMode
+class GEKKOGAMEUE_API ASquareGameMode : public AGekkoBaseGameMode
 {
 	GENERATED_BODY()
 	
-public:
+	ASquareGameMode(const FObjectInitializer& ObjectInitializer);
 	
 	virtual FGekkoConfig MakeConfig() override;
-	
 };

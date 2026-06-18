@@ -5,5 +5,6 @@
 #include "Modules/ModuleManager.h"
 
 DEFINE_LOG_CATEGORY(LogGekkoGame);
+DEFINE_LOG_CATEGORY(LogSquareGame);
 
 IMPLEMENT_PRIMARY_GAME_MODULE( FDefaultGameModuleImpl, GekkoGameUE, "GekkoGameUE" );

@@ -1,9 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "GekkoGameState.h"
-#include "GekkoGameMode.h"
 #include "GekkoNetSubsystem.h"
-#include "GekkoPlayerState.h"
 #include "RedoReplayManager.h"
 #include "RedoReplaySaveData.h"
 #include "GameFramework/PlayerState.h"
@@ -502,28 +500,6 @@ uint8 AGekkoGameState::GetScore(int32 index) const
 	return score;
 }
 
-AGekkoPlayerState* AGekkoGameState::GetOpponentState() const
-{
-	auto PC = GetWorld()->GetFirstPlayerController();
-	if (!PC)
-	{
-		return nullptr;
-	}
-	auto LocalState = PC->PlayerState;
-	if (!LocalState)
-	{
-		return nullptr;
-	}
-	for (int i = 0; i < PlayerArray.Num(); i++)
-	{
-		if (LocalState->GetPlayerId() != PlayerArray[i]->GetPlayerId())
-		{
-			return Cast<AGekkoPlayerState>(PlayerArray[i]);
-		}
-	}
-	return nullptr;
-}
-
 bool AGekkoGameState::HasMatchStarted() const
 {
 	bool bCanStart;
@@ -543,99 +519,4 @@ bool AGekkoGameState::HasMatchStarted() const
 	}
 	
 	return false;
-}
-
-FString AGekkoGameState::GetOpponentAddress() const
-{
-	if (GekkoGameInstance->bDirectMode)
-	{
-		if (GekkoGameInstance->OpponentAddresses.Num() > 0)
-		{
-			return GekkoGameInstance->OpponentAddresses[0];
-		}
-	}
-	
-	return GetOpponentState()->GetUniqueId().ToString();
-}
-
-FString AGekkoGameState::GetHostAddress() const
-{
-	auto PC = GetWorld()->GetFirstPlayerController();
-	if (PC && PC->HasAuthority())
-	{
-			return PC->PlayerState->GetUniqueId().ToString();
-	}
-
-	auto& PlayerArray = GetWorld()->GetGameState()->PlayerArray;
-	if (PlayerArray.Num() > 0)
-	{
-		for (int i = 0; i < PlayerArray.Num(); i++)
-		{
-			if (PC->PlayerState->GetUniqueId().ToString() != PlayerArray[i]->GetUniqueId().ToString())
-			{
-				return PlayerArray[i]->GetUniqueId().ToString();
-			}
-		}
-	}
-	
-	return "NO_HOST";
-}
-
-void AGekkoGameState::StartGekkoSession(uint8 InIndex)
-{
-	UGekkoNetSubsystem* GekkoNet = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
-
-	if (!GekkoNet)
-	{
-		return;
-	}
-	
-	GekkoNet->SetSimulationHost(this);
-	GekkoNet->bUseAsioTransport = GekkoGameInstance->bUsingAsio;
-	GekkoNet->bUseDirectAdapterIfAvailable = GekkoGameInstance->bDirectMode;
-
-	if (GekkoNet->bUseDirectAdapterIfAvailable)
-	{
-		GekkoNet->SetLocalPort(GekkoGameInstance->LocalPort);
-	}
-	
-	auto& HostConfig = GekkoGameInstance->HostConfig;
-	bool& bIsSpectator = GekkoGameInstance->bIsSpectating;
-	
-	GekkoNet->StartSession(HostConfig, bIsSpectator);
-	GekkoNet->SetRunahead(GekkoGameInstance->RunaheadAmount);
-	
-	FString RemoteAddress;
-	if (!bIsSpectator)
-	{
-		RemoteAddress = GetOpponentAddress();
-	}
-	else
-	{
-		RemoteAddress = GetHostAddress();
-	}
-
-	for (int i = 0; i < HostConfig.NumPlayers; ++i)
-	{
-		
-	}
-	
-	if (InIndex == 0)
-	{
-		NetLocalPlayerID = GekkoNet->AddActor();
-		GekkoNet->AddActor(EGekkoPlayerType::RemotePlayer, RemoteAddress);
-	}
-	else
-	{
-		GekkoNet->AddActor(EGekkoPlayerType::RemotePlayer, RemoteAddress);
-		NetLocalPlayerID = GekkoNet->AddActor();
-	}
-	
-	GekkoNet->SetLocalDelay(GekkoGameInstance->LocalDelayAmount, NetLocalPlayerID, false);
-	
-	GekkoNet->OnPlayerDisconnected.AddUniqueDynamic(this, &AGekkoGameState::PlayerDisconnected);
-	
-	bGekkoSessionStarted = true;
-	
-	UE_LOG(LogGekkoGame, Log, TEXT("Started session as Player %d"), InIndex + 1);
 }

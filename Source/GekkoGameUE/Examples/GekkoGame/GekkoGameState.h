@@ -4,10 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "game.h"
-#include "GekkoNetSimulationInterface.h"
 #include "GekkoNetSubsystem.h"
 #include "Containers/RingBuffer.h"
-#include "GameFramework/GameStateBase.h"
+#include "GekkoGameUE/Examples/GekkoBaseState.h"
 #include "GekkoGameState.generated.h"
 
 class UGekkoGameInstance;
@@ -17,7 +16,7 @@ class ARedoReplayManager;
  * 
  */
 UCLASS()
-class GEKKOGAMEUE_API AGekkoGameState : public AGameStateBase, public IGekkoNetSimulationInterface
+class GEKKOGAMEUE_API AGekkoGameState : public AGekkoBaseState
 {
 	GENERATED_BODY()
 	
@@ -86,9 +85,6 @@ public:
 	virtual void GekkoSave(GekkoGameEvent* Event) override;
 	virtual void GekkoAdvance(GekkoGameEvent* Event) override;
 	
-	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
-	void PlayerDisconnected(int32 Handle);
-	
 	// Checks if the game is able to rewind at its current frame.
 	UFUNCTION(BlueprintCallable)
 	bool CanRewind();
@@ -117,13 +113,8 @@ public:
 	UFUNCTION(BlueprintPure)
 	uint8 GetScore(int32 index) const;
 	
-	UFUNCTION()
-	AGekkoPlayerState* GetOpponentState() const;
-	UFUNCTION()
-	virtual void StartGekkoSession(uint8 InIndex);
+	virtual bool HasMatchStarted() const override;
 	
-	UPROPERTY(BlueprintReadOnly)
-	int32 NetLocalPlayerID;
 	UPROPERTY(BlueprintReadOnly)
 	FGekkoNetworkStats NetStats;
 	
@@ -152,13 +143,8 @@ public:
 	
 	UPROPERTY(BlueprintReadOnly)
 	ARedoReplayManager* ReplayManager = nullptr;
-	UPROPERTY(BlueprintReadOnly)
-	UGekkoGameInstance* GekkoGameInstance = nullptr;
 
 private:
-	virtual bool HasMatchStarted() const override;
-	FString GetOpponentAddress() const;
-	FString GetHostAddress() const;
 
 	GekkoGame::Gamestate Gs = {};
 	

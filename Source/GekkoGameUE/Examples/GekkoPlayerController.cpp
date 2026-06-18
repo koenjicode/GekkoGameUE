@@ -1,8 +1,7 @@
 ﻿#include "GekkoPlayerController.h"
-#include "GekkoGameMode.h"
-#include "GekkoGameState.h"
-#include "GekkoPlayerState.h"
+#include "GekkoBaseGameMode.h"
 #include "GameFramework/PlayerState.h"
+#include "GekkoGame/GekkoGameState.h"
 #include "GekkoGameUE/GekkoGameLog.h"
 #include "GekkoGameUE/Core/GekkoGameInstance.h"
 
@@ -132,7 +131,7 @@ FString AGekkoPlayerController::GetOpponentAddressAsString()
 
 void AGekkoPlayerController::Server_ClientReady_Implementation(int32 PlayerId)
 {
-	Cast<AGekkoGameMode>(GetWorld()->GetAuthGameMode())->ReadyPlayer(PlayerId);
+	Cast<AGekkoBaseGameMode>(GetWorld()->GetAuthGameMode())->ReadyPlayer(PlayerId);
 }
 
 void AGekkoPlayerController::Client_StartGekkoSession_Implementation(FGekkoConfig HostConfig)
