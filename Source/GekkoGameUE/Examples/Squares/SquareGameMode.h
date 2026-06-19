@@ -14,7 +14,7 @@ class GEKKOGAMEUE_API ASquareGameMode : public AGekkoBaseGameMode
 {
 	GENERATED_BODY()
 	
-	ASquareGameMode(const FObjectInitializer& ObjectInitializer);
+public:
 	
 	virtual FGekkoConfig MakeConfig() override;
 };

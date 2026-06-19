@@ -19,6 +19,7 @@ class GEKKOGAMEUE_API AGekkoBaseState : public AGameStateBase, public IGekkoNetS
 	
 public:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	
 	UFUNCTION(BlueprintPure)
 	virtual bool CanPause();

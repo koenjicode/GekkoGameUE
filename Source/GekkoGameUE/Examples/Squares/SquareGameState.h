@@ -21,23 +21,28 @@ protected:
 	
 	virtual void BeginPlay() override;
 	
-	
 	virtual void FixedTick() override;
+	
 	UFUNCTION()
 	void UpdateOnline();
 	UFUNCTION()
 	void UpdateOffline();
 	void UpdateGame();
-
 	void UpdateView();
-	virtual void Tick(float DeltaSeconds) override;
+	
+public:
 	
 	virtual void GekkoAdvance(GekkoGameEvent* Event) override;
 	virtual void GekkoGetLocalInput(int32 LocalPlayer, void* OutInputData) override;
 	virtual void GekkoLoad(GekkoGameEvent* Event) override;
 	virtual void GekkoSave(GekkoGameEvent* Event) override;
 	
-	void PollInputs(int32 Player);
+	UFUNCTION(BlueprintCallable)
+	void SaveState();
+	UFUNCTION(BlueprintCallable)
+	void LoadState();
+
+	FSquareInputs PollInputs(int32 Player);
 	
 	virtual void AdvanceGameState(FSquareInputs InInputs[4]);
 	
@@ -45,10 +50,6 @@ protected:
 public:
 	FSquareInputs Inputs[4];
 	ASquarePawn* SquareActors[4];
-	UPROPERTY(EditDefaultsOnly)
-	int32 SquareLimits;
-	UPROPERTY()
-	bool bPaused;
 	
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<ASquarePawn> SquareActorClass;

@@ -17,6 +17,16 @@ void AGekkoBaseState::BeginPlay()
 	GekkoGameInstance = GetWorld()->GetGameInstance<UGekkoGameInstance>();
 }
 
+void AGekkoBaseState::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	Super::EndPlay(EndPlayReason);
+	UGekkoNetSubsystem* GNS = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
+	if (GNS && GNS->IsSessionRunning())
+	{
+		GNS->EndSession();
+	}
+}
+
 bool AGekkoBaseState::CanPause()
 {
 	return !GekkoGameInstance->GetSubsystem<UGekkoNetSubsystem>()->IsSessionRunning();

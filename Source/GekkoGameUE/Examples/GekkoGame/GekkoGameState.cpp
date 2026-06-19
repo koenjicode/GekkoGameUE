@@ -108,13 +108,7 @@ void AGekkoGameState::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	{
 		ReplayManager->SaveReplay();
 	}
-	
 	FMemory::Memzero(&Gs, sizeof(Gs));
-	UGekkoNetSubsystem* GNS = GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>();
-	if (GNS && GNS->IsSessionRunning())
-	{
-		GNS->EndSession();
-	}
 }
 
 void AGekkoGameState::HandleReplayTakeoverTimer()
@@ -331,9 +325,13 @@ void AGekkoGameState::UpdateOffline()
 void AGekkoGameState::UpdateOnline()
 {
 	UGekkoNetSubsystem* GNS = GekkoGameInstance->GetSubsystem<UGekkoNetSubsystem>();
+
+	if (!GNS->IsSessionRunning())
+	{
+		return;
+	}
 		
 	GNS->UpdateSession();
-	
 	NetStats = GNS->GetNetworkStats(NetLocalPlayerID ^ 1);
 }
 

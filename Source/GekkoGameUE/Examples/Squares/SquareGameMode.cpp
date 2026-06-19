@@ -6,13 +6,6 @@
 #include "SquareTypes.h"
 #include "GekkoGameUE/Core/GekkoGameInstance.h"
 
-ASquareGameMode::ASquareGameMode(const FObjectInitializer& ObjectInitializer)
-{
-	DefaultPawnClass = nullptr;
-	GameStateClass = ASquareGameState::StaticClass();
-	PlayerStateClass = AGekkoPlayerState::StaticClass();
-}
-
 FGekkoConfig ASquareGameMode::MakeConfig()
 {
 	auto HostConfig = GekkoGameInstance->HostConfig;

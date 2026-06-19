@@ -15,11 +15,11 @@ struct FSquareInputs
 	GENERATED_BODY()
 	
 	UPROPERTY()
-	bool Up;
+	uint8 Up : 1;
 	UPROPERTY()
-	bool Down;
+	uint8 Down : 1;
 	UPROPERTY()
-	bool Left;
+	uint8 Left : 1;
 	UPROPERTY()
-	bool Right;
+	uint8 Right : 1;
 };

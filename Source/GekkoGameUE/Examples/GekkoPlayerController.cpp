@@ -8,7 +8,7 @@
 void AGekkoPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
-	GekkoGameState = Cast<AGekkoGameState>(GetWorld()->GetGameState());
+	GekkoGameState = Cast<AGekkoBaseState>(GetWorld()->GetGameState());
 	GekkoGameInstance = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
 }
 

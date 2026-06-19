@@ -21,7 +21,7 @@ void AGekkoBaseGameMode::BeginPlay()
 	Super::BeginPlay();
 	
 	GekkoGameInstance = Cast<UGekkoGameInstance>(GetWorld()->GetGameInstance());
-	GekkoGameState = Cast<AGekkoGameState>(GetWorld()->GetGameState());
+	GekkoGameState = Cast<AGekkoBaseState>(GetWorld()->GetGameState());
 }
 
 bool AGekkoBaseGameMode::IsLocalPlay() const
