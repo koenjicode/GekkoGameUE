@@ -19,6 +19,11 @@ public:
 	virtual void FixedTick(FSquareInputs Inputs);
 	virtual void ViewTick();
 	
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnFixedTick(FSquareInputs Inputs);
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnViewTick();
+	
 	virtual TArray<uint8> SaveForRollback();
 	virtual void LoadForRollback(const TArray<uint8>& InBytes);
 	

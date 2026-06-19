@@ -9,17 +9,19 @@
 
 #define SQUAREGAME_FIXED_SCALE 1000
 
-USTRUCT()
+USTRUCT(BlueprintType)
 struct FSquareInputs
 {
 	GENERATED_BODY()
 	
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly)
 	uint8 Up : 1;
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly)
 	uint8 Down : 1;
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly)
 	uint8 Left : 1;
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly)
 	uint8 Right : 1;
+	UPROPERTY(BlueprintReadOnly)
+	uint8 A : 1;
 };

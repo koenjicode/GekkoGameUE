@@ -162,7 +162,7 @@ FSquareInputs ASquareGameState::PollInputs(int32 Player)
 
 	if (PC)
 	{
-		constexpr float Deadzone = 0.5f;
+		constexpr float Deadzone = 0.2f;
 
 		const float LeftX = PC->GetInputAnalogKeyState(EKeys::Gamepad_LeftX);
 		const float LeftY = PC->GetInputAnalogKeyState(EKeys::Gamepad_LeftY);
@@ -190,6 +190,10 @@ FSquareInputs ASquareGameState::PollInputs(int32 Player)
 			PC->IsInputKeyDown(EKeys::Down) ||
 			PC->IsInputKeyDown(EKeys::Gamepad_DPad_Down) ||
 			LeftY < -Deadzone;
+		
+		PlayerInputs.A =
+			PC->IsInputKeyDown(EKeys::Z) ||
+			PC->IsInputKeyDown(EKeys::Gamepad_FaceButton_Bottom);
 	}
 	
 	return PlayerInputs;

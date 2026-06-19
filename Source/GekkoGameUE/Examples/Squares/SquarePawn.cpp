@@ -15,22 +15,21 @@ ASquarePawn::ASquarePawn()
 
 void ASquarePawn::FixedTick(FSquareInputs Inputs)
 {
-	if (!Inputs.Left && !Inputs.Right && !Inputs.Up && !Inputs.Down)
-	{
-		return;
-	}
-	
 	int32 ForwardVal = Inputs.Right - Inputs.Left;
 	int32 UpVal = Inputs.Up - Inputs.Down;
 	
 	RealX += FMath::Min(UpVal * MoveSpeed * SQUAREGAME_FIXED_SCALE, INT32_MAX);
 	RealY += FMath::Min(ForwardVal * MoveSpeed * SQUAREGAME_FIXED_SCALE, INT32_MAX);
+	
+	OnFixedTick(Inputs);
 }
 
 void ASquarePawn::ViewTick()
 {
 	const FVector Loc = FVector(RealX / SQUAREGAME_FIXED_SCALE, RealY / SQUAREGAME_FIXED_SCALE, 0);
 	SetActorLocation(Loc, true);
+	
+	OnViewTick();
 }
 
 TArray<uint8> ASquarePawn::SaveForRollback()
