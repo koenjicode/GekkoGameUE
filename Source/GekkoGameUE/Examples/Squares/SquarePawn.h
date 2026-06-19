@@ -17,13 +17,18 @@ public:
 	ASquarePawn();
 	
 	virtual void FixedTick(FSquareInputs Inputs);
+	virtual void ViewTick();
+	
+	virtual TArray<uint8> SaveForRollback();
+	virtual void LoadForRollback(const TArray<uint8>& InBytes);
+	
+	UFUNCTION(BlueprintImplementableEvent)
+	void SetDefaultColor(FLinearColor Color);
 	
 	UPROPERTY(EditDefaultsOnly)
 	int32 MoveSpeed = 5;
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, SaveGame)
 	int32 RealX;
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, SaveGame)
 	int32 RealY;
-	
-	virtual void ViewTick();
 };

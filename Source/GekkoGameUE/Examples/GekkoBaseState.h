@@ -20,6 +20,24 @@ class GEKKOGAMEUE_API AGekkoBaseState : public AGameStateBase, public IGekkoNetS
 public:
 	virtual void BeginPlay() override;
 	
+	UFUNCTION(BlueprintPure)
+	virtual bool CanPause();
+	UFUNCTION(BlueprintPure)
+	virtual bool ShouldPauseGame() const;
+	UFUNCTION(BlueprintCallable)
+	void SetGamePaused(bool bPaused);
+	UFUNCTION(BlueprintCallable)
+	void TogglePause();
+	
+	virtual void Tick(float DeltaSeconds) override;
+	
+	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
+	
+	UFUNCTION(BlueprintPure)
+	virtual bool IsOffline();
+	
+	virtual void FixedTick();
+	
 	UFUNCTION()
 	virtual AGekkoPlayerState* GetOpponentState() const;
 	UFUNCTION()
@@ -38,10 +56,18 @@ public:
 	TObjectPtr<UGekkoGameInstance> GekkoGameInstance;
 	UPROPERTY(BlueprintReadOnly)
 	int32 NetLocalPlayerID;
-	
+	UPROPERTY(VisibleInstanceOnly, Replicated)
+	bool bMatchStarted;
+	UPROPERTY(BlueprintReadWrite, VisibleInstanceOnly)
+	bool bGamePaused;
+
 protected:
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
 	void PlayerDisconnected(int32 Handle);
 	
+	UPROPERTY(VisibleDefaultsOnly)
 	bool bGekkoSessionStarted;
+	
+private:
+	float ElapsedTime;
 };

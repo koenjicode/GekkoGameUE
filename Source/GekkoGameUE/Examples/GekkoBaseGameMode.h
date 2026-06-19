@@ -7,8 +7,8 @@
 #include "GameFramework/GameModeBase.h"
 #include "GekkoBaseGameMode.generated.h"
 
+class AGekkoBaseState;
 class UGekkoGameInstance;
-class AGekkoGameState;
 /**
  * 
  */
@@ -36,9 +36,10 @@ public:
 	
 	virtual FGekkoConfig MakeConfig();
 	
+	virtual bool HasMatchStarted() const override;
+	
 	UFUNCTION()
 	void StartMatch();
-	
 	virtual void Tick(float DeltaSeconds) override;
 	
 	UPROPERTY()
@@ -51,7 +52,9 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 	TObjectPtr<UGekkoGameInstance> GekkoGameInstance;
 	UPROPERTY(BlueprintReadOnly)
-	TObjectPtr<AGekkoGameState> GekkoGameState;
+	TObjectPtr<AGekkoBaseState> GekkoGameState;
+	UPROPERTY(BlueprintReadOnly)
+	bool bGekkoSessionStarted;
 	UPROPERTY(EditDefaultsOnly)
 	int RequiredNumberOfPlayers = 2;
 };

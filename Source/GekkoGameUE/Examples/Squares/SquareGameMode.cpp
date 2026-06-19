@@ -17,8 +17,10 @@ FGekkoConfig ASquareGameMode::MakeConfig()
 {
 	auto HostConfig = GekkoGameInstance->HostConfig;
 	
+	auto SquareGameState = Cast<ASquareGameState>(GameState);
+	
 	HostConfig.NumPlayers = 2;
-	HostConfig.StateSize = 0;
+	HostConfig.StateSize = SquareGameState->RollbackStateSize;
 	HostConfig.InputSize = sizeof(FSquareInputs);
 	
 	return HostConfig;

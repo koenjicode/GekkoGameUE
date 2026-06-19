@@ -2,17 +2,77 @@
 
 
 #include "GekkoBaseState.h"
-
 #include "GekkoNetSubsystem.h"
 #include "GekkoPlayerState.h"
 #include "GekkoGameUE/GekkoGameLog.h"
 #include "GekkoGameUE/Core/GekkoGameInstance.h"
+#include "Net/UnrealNetwork.h"
+
+static constexpr float OneFrame = 1.0f / 60;
 
 void AGekkoBaseState::BeginPlay()
 {
 	Super::BeginPlay();
 	
 	GekkoGameInstance = GetWorld()->GetGameInstance<UGekkoGameInstance>();
+}
+
+bool AGekkoBaseState::CanPause()
+{
+	return !GekkoGameInstance->GetSubsystem<UGekkoNetSubsystem>()->IsSessionRunning();
+}
+
+bool AGekkoBaseState::ShouldPauseGame() const
+{
+	return bGamePaused;
+}
+
+void AGekkoBaseState::SetGamePaused(bool bPaused)
+{
+	if (CanPause())
+	{
+		bGamePaused = bPaused;
+		UE_LOG(LogGekkoGame, Log, TEXT("game %s."), bGamePaused ? TEXT("Paused") : TEXT("Unpaused"));
+	}
+}
+
+void AGekkoBaseState::TogglePause()
+{
+	SetGamePaused(!bGamePaused);
+}
+
+void AGekkoBaseState::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	if (bGamePaused)
+	{
+		return;
+	}
+	ElapsedTime += DeltaSeconds;
+	while (ElapsedTime >= OneFrame)
+	{
+		FixedTick();
+		ElapsedTime -= OneFrame;
+	}
+}
+
+void AGekkoBaseState::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	
+	DOREPLIFETIME(AGekkoBaseState, bMatchStarted);
+}
+
+bool AGekkoBaseState::IsOffline()
+{
+	return GetNetMode() == NM_Standalone && !GekkoGameInstance->bDirectMode;
+}
+
+void AGekkoBaseState::FixedTick()
+{
+	// game logic runs here.
+	// separate your render logic here as well
 }
 
 AGekkoPlayerState* AGekkoBaseState::GetOpponentState() const
@@ -128,16 +188,20 @@ void AGekkoBaseState::StartGekkoSession(uint8 InIndex)
 
 void AGekkoBaseState::GekkoAdvance(GekkoGameEvent* Event)
 {
+	// game related advance logic
 }
 
 void AGekkoBaseState::GekkoGetLocalInput(int32 LocalPlayer, void* OutInputData)
 {
+	// game related local input retrieval
 }
 
 void AGekkoBaseState::GekkoLoad(GekkoGameEvent* Event)
 {
+	// game related data loading
 }
 
 void AGekkoBaseState::GekkoSave(GekkoGameEvent* Event)
 {
+	// game related saving
 }

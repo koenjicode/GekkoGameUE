@@ -3,6 +3,8 @@
 
 #include "SquarePawn.h"
 #include "SquareTypes.h"
+#include "Serialization/ObjectReader.h"
+#include "Serialization/ObjectWriter.h"
 
 // Sets default values
 ASquarePawn::ASquarePawn()
@@ -31,3 +33,19 @@ void ASquarePawn::ViewTick()
 	SetActorLocation(Loc, true);
 }
 
+TArray<uint8> ASquarePawn::SaveForRollback()
+{
+	TArray<uint8> SaveData;
+	FObjectWriter Writer(SaveData);
+	Writer.ArIsSaveGame = true;
+	GetClass()->SerializeBin(Writer, this);
+	return SaveData;
+}
+
+void ASquarePawn::LoadForRollback(const TArray<uint8>& InBytes)
+{
+	if (InBytes.Num() <= 1) return;
+	FObjectReader Reader(InBytes);
+	Reader.ArIsSaveGame = true;
+	GetClass()->SerializeBin(Reader, this);
+}

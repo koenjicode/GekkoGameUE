@@ -2,7 +2,6 @@
 
 
 #include "GekkoBaseGameMode.h"
-
 #include "GekkoPlayerController.h"
 #include "GekkoGame/GekkoGameState.h"
 #include "GekkoGameUE/GekkoGameLog.h"
@@ -27,7 +26,7 @@ void AGekkoBaseGameMode::BeginPlay()
 
 bool AGekkoBaseGameMode::IsLocalPlay() const
 {
-	return GekkoGameState->IsPlayingOffline();
+	return GekkoGameState->IsOffline();
 }
 
 void AGekkoBaseGameMode::ReadyPlayer(int32 PlayerId)
@@ -87,6 +86,27 @@ bool AGekkoBaseGameMode::CanStartMatch()
 FGekkoConfig AGekkoBaseGameMode::MakeConfig()
 {
 	return GekkoGameInstance->HostConfig;
+}
+
+bool AGekkoBaseGameMode::HasMatchStarted() const
+{
+	bool bCanStart;
+	
+	if (IsNetMode(NM_Standalone))
+	{
+		bCanStart = bMatchStarted;
+	}
+	else
+	{
+		bCanStart = bMatchStarted && bGekkoSessionStarted;
+	}
+	
+	if (bCanStart)
+	{
+		return Super::HasMatchStarted();
+	}
+	
+	return false;
 }
 
 void AGekkoBaseGameMode::StartMatch()

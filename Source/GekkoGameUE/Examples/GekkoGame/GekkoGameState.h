@@ -27,18 +27,18 @@ public:
 	void CreateInputBuffers();
 	void PrepareReplay();
 	
+	virtual void BeginPlay() override;
+	
+	virtual void FixedTick() override;
+	
 protected:
 	
-	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	
 public:
 	
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-	
 	void HandleReplayTakeoverTimer();
-
-	virtual void Tick(float DeltaSeconds) override;
+	
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnUnrealDraw();
 	
@@ -71,13 +71,10 @@ public:
 	GekkoGame::Input PollLatestInput(int32 PlayerIndex) const;
 	GekkoGame::Input PollInput(int32 PlayerIndex) const;
 	
-	UFUNCTION(BlueprintPure)
-	bool IsPlayingOffline() const;
-	
 	void UpdateOffline();
 	void UpdateOnline();
-	void UpdateReplay();
 	void UpdateGame();
+	void UpdateReplay();
 	void AdvanceGameState(GekkoGame::Input InInputs[], GekkoGameEvent* Event = nullptr);
 	
 	virtual void GekkoGetLocalInput(int32 LocalPlayer, void* OutInputData) override;
@@ -86,19 +83,10 @@ public:
 	virtual void GekkoAdvance(GekkoGameEvent* Event) override;
 	
 	// Checks if the game is able to rewind at its current frame.
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintPure)
 	bool CanRewind();
 	// Check if the game can pause at its current frame.
-	UFUNCTION(BlueprintCallable)
-	bool CanPause();
-	UFUNCTION()
-	bool ShouldPauseGame() const;
-	// Set whether the game state is paused.
-	UFUNCTION(BlueprintCallable)
-	void SetGamePaused(bool bPaused);
-	// Toggle whether the game state should be paused.
-	UFUNCTION(BlueprintCallable)
-	void TogglePause();
+	virtual bool ShouldPauseGame() const override;
 	
 	// Get the replay manager.
 	UFUNCTION(BlueprintPure)
@@ -112,8 +100,6 @@ public:
 	FVector GetBallPosition(int32 index) const;
 	UFUNCTION(BlueprintPure)
 	uint8 GetScore(int32 index) const;
-	
-	virtual bool HasMatchStarted() const override;
 	
 	UPROPERTY(BlueprintReadOnly)
 	FGekkoNetworkStats NetStats;
@@ -130,16 +116,9 @@ public:
 	// Fallback level on a discconect.
 	UPROPERTY(EditDefaultsOnly)
 	TSoftObjectPtr<UWorld> DisconnectLevel;
-	// Whether the Pong game state is paused or not.
-	UPROPERTY(BlueprintReadWrite)
-	bool bGamePaused = false;
 	// Whether a player has taken control of a replay.
 	UPROPERTY(BlueprintReadOnly)
 	bool bReplayTakeoverEnabled = false;
-	UPROPERTY(VisibleInstanceOnly, Replicated)
-	bool bMatchStarted = false;
-	UPROPERTY()
-	bool bGekkoSessionStarted = false;
 	
 	UPROPERTY(BlueprintReadOnly)
 	ARedoReplayManager* ReplayManager = nullptr;

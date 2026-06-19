@@ -7,8 +7,8 @@
 #include "GameFramework/PlayerController.h"
 #include "GekkoPlayerController.generated.h"
 
+class AGekkoBaseState;
 class UGekkoGameInstance;
-class AGekkoGameState;
 class AGekkoPlayerState;
 /**
  * 
@@ -40,7 +40,7 @@ public:
 	UPROPERTY()
 	TArray<uint8> OpponentAddressBuffer;
 	UPROPERTY(BlueprintReadOnly)
-	AGekkoGameState* GekkoGameState;
+	AGekkoBaseState* GekkoGameState;
 	UPROPERTY(BlueprintReadOnly)
 	UGekkoGameInstance* GekkoGameInstance;
 	UPROPERTY(BlueprintReadOnly)

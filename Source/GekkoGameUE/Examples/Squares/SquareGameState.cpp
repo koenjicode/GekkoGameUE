@@ -9,6 +9,14 @@
 
 static constexpr float OneFrame = 1.0f / 60;
 
+static const FLinearColor PlayerColors[] =
+{
+	FLinearColor::Red,
+	FLinearColor::Green,
+	FLinearColor::Blue,
+	FLinearColor::Black
+};
+
 ASquareGameState::ASquareGameState()
 {
 	SquareActorClass = ASquarePawn::StaticClass();
@@ -22,12 +30,11 @@ void ASquareGameState::BeginPlay()
 	{
 		SquareActors[i] = GetWorld()->SpawnActor<ASquarePawn>(SquareActorClass);
 		SquareActors[i]->RealY += 250 * i * SQUAREGAME_FIXED_SCALE;
+		SquareActors[i]->SetDefaultColor(PlayerColors[i]);
 	}
-}
-
-bool ASquareGameState::IsOffline() const
-{
-	return GetNetMode() == NM_Standalone && !GekkoGameInstance->bDirectMode;
+	
+	RollbackStateSize = SquareActors[0]->SaveForRollback().Num() * MAX_SQUARE_PLAYERS;
+	RollbackState.Reserve(RollbackStateSize);
 }
 
 void ASquareGameState::UpdateOnline()
@@ -63,6 +70,12 @@ void ASquareGameState::UpdateGame()
 	}
 }
 
+void ASquareGameState::FixedTick()
+{
+	UpdateGame();
+	UpdateView();
+}
+
 void ASquareGameState::UpdateView()
 {
 	for (int i = 0; i < MAX_SQUARE_PLAYERS; ++i)
@@ -79,7 +92,7 @@ void ASquareGameState::Tick(float DeltaSeconds)
 	{
 		if (!bPaused)
 		{
-			UpdateGame();
+			FixedTick();
 			UpdateView();
 		}
 		ElapsedTime -= OneFrame;
@@ -100,17 +113,37 @@ void ASquareGameState::GekkoAdvance(GekkoGameEvent* Event)
 
 void ASquareGameState::GekkoGetLocalInput(int32 LocalPlayer, void* OutInputData)
 {
-	Super::GekkoGetLocalInput(LocalPlayer, OutInputData);
+	FMemory::Memcpy(OutInputData, &Inputs[LocalPlayer], sizeof(FSquareInputs));
 }
 
 void ASquareGameState::GekkoLoad(GekkoGameEvent* Event)
 {
 	Super::GekkoLoad(Event);
+	
+	FMemory::Memcpy(&RollbackState, Event->data.load.state, Event->data.load.state_len);
+	int32 PlayerStateSize = RollbackStateSize / MAX_SQUARE_PLAYERS;
+	
+	for (int i = 0; i < MAX_SQUARE_PLAYERS; i++)
+	{
+		TArray<uint8> PawnChunk;
+		PawnChunk.Reserve(PlayerStateSize);
+		auto Offset = RollbackState.GetData() + (PlayerStateSize * i);
+		FMemory::Memcpy(&PawnChunk, Offset, RollbackStateSize);
+		SquareActors[i]->LoadForRollback(PawnChunk);
+	}
 }
 
 void ASquareGameState::GekkoSave(GekkoGameEvent* Event)
 {
-	Super::GekkoSave(Event);
+	RollbackState.Reset();
+	
+	for (int i = 0; i < MAX_SQUARE_PLAYERS; i++)
+	{
+		auto PawnChunk = SquareActors[i]->SaveForRollback();
+		RollbackState.Append(PawnChunk);
+	}
+	
+	FMemory::Memcpy(Event->data.save.state, &RollbackState, RollbackStateSize);
 }
 
 void ASquareGameState::PollInputs(int32 Player)
@@ -153,7 +186,7 @@ void ASquareGameState::PollInputs(int32 Player)
 
 void ASquareGameState::AdvanceGameState(FSquareInputs InInputs[4])
 {
-	for (int i = 0; i < 4; i++)
+	for (int i = 0; i < MAX_SQUARE_PLAYERS; i++)
 	{
 		auto& SquarePawn = SquareActors[i];
 		SquarePawn->FixedTick(InInputs[i]);

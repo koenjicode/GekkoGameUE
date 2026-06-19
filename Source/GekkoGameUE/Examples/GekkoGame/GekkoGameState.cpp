@@ -8,7 +8,6 @@
 #include "GekkoGameUE/GekkoGameLog.h"
 #include "GekkoGameUE/Core/GekkoGameInstance.h"
 #include "Kismet/GameplayStatics.h"
-#include "Net/UnrealNetwork.h"
 
 #define TARGET_FRAMERATE 60
 #define ONE_FRAME (1.0f / TARGET_FRAMERATE)
@@ -118,13 +117,6 @@ void AGekkoGameState::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	}
 }
 
-void AGekkoGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	
-	DOREPLIFETIME(AGekkoGameState, bMatchStarted);
-}
-
 void AGekkoGameState::HandleReplayTakeoverTimer()
 {
 	if (ReplayTakeoverStartTimer > 0)
@@ -135,18 +127,6 @@ void AGekkoGameState::HandleReplayTakeoverTimer()
 			SetGamePaused(false);
 			UE_LOG(LogGekkoGame, Log, TEXT("Replay takeover started!"));
 		}
-	}
-}
-
-void AGekkoGameState::Tick(float DeltaSeconds)
-{
-	Super::Tick(DeltaSeconds);
-	ElapsedTime += DeltaSeconds;
-	while (ElapsedTime >= ONE_FRAME)
-	{
-		UpdateGame();
-		OnUnrealDraw();
-		ElapsedTime -= ONE_FRAME;
 	}
 }
 
@@ -357,11 +337,6 @@ void AGekkoGameState::UpdateOnline()
 	NetStats = GNS->GetNetworkStats(NetLocalPlayerID ^ 1);
 }
 
-bool AGekkoGameState::IsPlayingOffline() const
-{
-	return GetNetMode() == NM_Standalone && !GekkoGameInstance->bDirectMode;
-}
-
 void AGekkoGameState::UpdateGame()
 {
 	if (!HasMatchStarted())
@@ -369,7 +344,7 @@ void AGekkoGameState::UpdateGame()
 		return;
 	}
 	
-	if (!IsPlayingOffline())
+	if (!IsOffline())
 	{
 		UpdateOnline();
 	}
@@ -381,6 +356,12 @@ void AGekkoGameState::UpdateGame()
 	{
 		UpdateOffline();
 	}
+}
+
+void AGekkoGameState::FixedTick()
+{
+	UpdateGame();
+	OnUnrealDraw();
 }
 
 void AGekkoGameState::AdvanceGameState(GekkoGame::Input InInputs[4], GekkoGameEvent* Event)
@@ -446,28 +427,9 @@ bool AGekkoGameState::CanRewind()
 	return ReplayManager && ReplayManager->GetManagerBehaviour() == ERedoReplayMode::Playback;
 }
 
-bool AGekkoGameState::CanPause()
-{
-	return !GetWorld()->GetGameInstance()->GetSubsystem<UGekkoNetSubsystem>()->IsSessionRunning();
-}
-
 bool AGekkoGameState::ShouldPauseGame() const
 {
-	return bGamePaused || ReplayTakeoverStartTimer > 0;
-}
-
-void AGekkoGameState::SetGamePaused(bool bPaused)
-{
-	if (CanPause())
-	{
-		bGamePaused = bPaused;
-		UE_LOG(LogGekkoGame, Log, TEXT("%s game frame %d."), bGamePaused ? TEXT("Paused") : TEXT("Unpaused"), LocalFrame);
-	}
-}
-
-void AGekkoGameState::TogglePause()
-{
-	SetGamePaused(!bGamePaused);
+	return Super::ShouldPauseGame() || ReplayTakeoverStartTimer > 0;
 }
 
 FVector AGekkoGameState::GetPaddlePosition(int32 index) const
@@ -498,25 +460,4 @@ uint8 AGekkoGameState::GetScore(int32 index) const
 {
 	uint8 score = Gs.state.scores[index];
 	return score;
-}
-
-bool AGekkoGameState::HasMatchStarted() const
-{
-	bool bCanStart;
-	
-	if (IsNetMode(NM_Standalone))
-	{
-		bCanStart = bMatchStarted;
-	}
-	else
-	{
-		bCanStart =  bMatchStarted && bGekkoSessionStarted;
-	}
-	
-	if (bCanStart)
-	{
-		return Super::HasMatchStarted();
-	}
-	
-	return false;
 }

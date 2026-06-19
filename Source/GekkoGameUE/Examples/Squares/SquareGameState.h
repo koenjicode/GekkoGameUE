@@ -21,14 +21,13 @@ protected:
 	
 	virtual void BeginPlay() override;
 	
-	UFUNCTION()
-	void UpdateGame();
-	UFUNCTION()
-	bool IsOffline() const;
+	
+	virtual void FixedTick() override;
 	UFUNCTION()
 	void UpdateOnline();
 	UFUNCTION()
 	void UpdateOffline();
+	void UpdateGame();
 
 	void UpdateView();
 	virtual void Tick(float DeltaSeconds) override;
@@ -50,8 +49,6 @@ public:
 	int32 SquareLimits;
 	UPROPERTY()
 	bool bPaused;
-	UPROPERTY()
-	bool bGekkoSessionStarted;
 	
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<ASquarePawn> SquareActorClass;
@@ -60,16 +57,20 @@ public:
 	int32 LocalFrame;
 	UPROPERTY()
 	int32 RemoteFrame;
+	UPROPERTY()
+	int32 RollbackStateSize;
 	
 	UFUNCTION(BlueprintPure)
 	int32 GetPlayerCount();
-	
 	UFUNCTION(BlueprintPure)
 	ASquarePawn* GetSquareActor(int Index);
+	
 
 private:
 	UPROPERTY()
 	float ElapsedTime;
 	UPROPERTY()
 	int32 ElapsedMatchTime;
+	UPROPERTY()
+	TArray<uint8> RollbackState;
 };
