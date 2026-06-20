@@ -76,7 +76,7 @@ void AGekkoBaseState::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>
 
 bool AGekkoBaseState::IsOffline()
 {
-	return GetNetMode() == NM_Standalone && !GekkoGameInstance->bDirectMode;
+	return GetNetMode() == NM_Standalone && !GekkoGameInstance->bDirectMode && !GekkoGameInstance->bIsStressTest;
 }
 
 void AGekkoBaseState::FixedTick()
@@ -162,32 +162,61 @@ void AGekkoBaseState::StartGekkoSession(uint8 InIndex)
 	
 	auto& HostConfig = GekkoGameInstance->HostConfig;
 	bool& bIsSpectator = GekkoGameInstance->bIsSpectating;
+	bool& bIsStress = GekkoGameInstance->bIsStressTest;
 	
-	GekkoNet->StartSession(HostConfig, bIsSpectator);
+	EGekkoSessionType InSessionType;
+	if (bIsSpectator)
+	{
+		InSessionType = EGekkoSessionType::Spectator;
+	}
+	else if (bIsStress)
+	{
+		InSessionType = EGekkoSessionType::Stress;
+	}
+	else
+	{
+		InSessionType = EGekkoSessionType::Game;
+	}
+	
+	GekkoNet->StartSession(HostConfig, InSessionType);
 	GekkoNet->SetRunahead(GekkoGameInstance->RunaheadAmount);
-	
+
 	FString RemoteAddress;
-	if (!bIsSpectator)
+	if (!bIsStress)
 	{
-		RemoteAddress = GetOpponentAddress();
+		if (!bIsSpectator)
+		{
+			RemoteAddress = GetOpponentAddress();
+		}
+		else
+		{
+			RemoteAddress = GetHostAddress();
+		}
+	}
+
+	if (bIsStress)
+	{
+		for (int i = 0; i < 2; ++i)
+		{
+			int32 StressPlayerID = GekkoNet->AddActor();
+			GekkoNet->SetLocalDelay(GekkoGameInstance->LocalDelayAmount, StressPlayerID, false);
+		}
 	}
 	else
 	{
-		RemoteAddress = GetHostAddress();
+		if (InIndex == 0)
+		{
+			NetLocalPlayerID = GekkoNet->AddActor();
+			GekkoNet->AddActor(EGekkoPlayerType::RemotePlayer, RemoteAddress);
+		}
+		else
+		{
+			GekkoNet->AddActor(EGekkoPlayerType::RemotePlayer, RemoteAddress);
+			NetLocalPlayerID = GekkoNet->AddActor();
+		}
+		
+		GekkoNet->SetLocalDelay(GekkoGameInstance->LocalDelayAmount, NetLocalPlayerID, false);
 	}
-	
-	if (InIndex == 0)
-	{
-		NetLocalPlayerID = GekkoNet->AddActor();
-		GekkoNet->AddActor(EGekkoPlayerType::RemotePlayer, RemoteAddress);
-	}
-	else
-	{
-		GekkoNet->AddActor(EGekkoPlayerType::RemotePlayer, RemoteAddress);
-		NetLocalPlayerID = GekkoNet->AddActor();
-	}
-	
-	GekkoNet->SetLocalDelay(GekkoGameInstance->LocalDelayAmount, NetLocalPlayerID, false);
 	
 	GekkoNet->OnPlayerDisconnected.AddUniqueDynamic(this, &AGekkoBaseState::PlayerDisconnected);
 	

@@ -20,6 +20,8 @@ class GEKKOGAMEUE_API UGekkoGameInstance : public UAdvancedFriendsGameInstance
 	// Is the match being played locally.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bLocalPlayEnabled = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bIsStressTest = false;
 	// Whether recording is enabled. This will start up the Replay Manager in the next match.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bAllowRecording = true;

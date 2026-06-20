@@ -67,7 +67,7 @@ bool AGekkoBaseGameMode::CanStartMatch()
 	}
 	
 	// If direct connect is enabled, we will start the match
-	if (GekkoGameInstance->bDirectMode)
+	if (GekkoGameInstance->bDirectMode || GekkoGameInstance->bIsStressTest)
 	{
 		UE_LOG(LogGekkoGame, Log, TEXT("Starting a direct networked match."));
 		return true;
